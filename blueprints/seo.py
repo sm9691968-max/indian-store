@@ -1,8 +1,11 @@
 """SEO surface: sitemap, robots.txt, JSON-LD and the social metadata shim."""
 
 import json
+from datetime import datetime, timezone
+from urllib.parse import urlencode
 
 from flask import Blueprint, Response, render_template, request, url_for, abort
+from markupsafe import Markup
 from sqlalchemy import func
 
 from extensions import db
@@ -15,6 +18,45 @@ SITE_DESCRIPTION = (
     "Indian Store is a curated marketplace for premium keyboards, audio, displays and desk gear, "
     "with verified reviews, real-time stock and free delivery over $150."
 )
+
+# Query parameters that change what is on the page. A filtered or sorted
+# listing is the same document as the unfiltered one, so it must not be
+# indexed as a separate URL.
+_FILTER_PARAMS = frozenset({"category", "brand", "q", "stock", "price", "sort", "rating"})
+
+# "page" is handled separately: page 1 is canonical, deeper pages are not, so
+# the 168 pages of a 2,010-item catalogue do not compete with each other.
+_PAGE = "page"
+
+
+def canonical_url() -> str:
+    """The one URL that should represent this page.
+
+    Uses the full request path, unlike request.base_url, which drops the path
+    entirely and made every product page claim to be the homepage. Filter and
+    sort parameters are dropped so the 400+ filter permutations of one category
+    collapse to a single canonical URL.
+    """
+    args = {key: value for key, value in request.args.items() if key not in _FILTER_PARAMS}
+
+    # Drop ?page=1 but keep it for page 2+, so every page is reachable and the
+    # first page does not duplicate the bare URL.
+    page = args.get(_PAGE)
+    if page in (None, "", "1"):
+        args.pop(_PAGE, None)
+
+    # request.endpoint is the rule name ("catalog.product_detail"), not the
+    # view function's __name__. Path parameters (slug, category) come from
+    # request.view_args, which url_for does not supply on its own.
+    #
+    # It is None on a 404 and inside the context processor of an error page,
+    # so fall back to the literal path rather than letting url_for raise and
+    # turn a missing page into a 500.
+    if not request.endpoint:
+        base = request.url_root.rstrip("/") + request.path
+        return f"{base}?{urlencode(args)}" if args else base
+
+    return url_for(request.endpoint, _external=True, **(request.view_args or {}), **args)
 
 
 @seo_bp.get("/robots.txt")
@@ -42,11 +84,12 @@ def sitemap():
     ).all()
     categories = db.session.scalars(db.select(Category).order_by(Category.slug)).all()
 
-    urls = [(url_for("catalog.index", _external=True), "daily", "1.0")]
-    urls += [
+    urls = [
+        (url_for("catalog.index", _external=True), "daily", "1.0"),
         (url_for("catalog.recently_viewed", _external=True), "daily", "0.4"),
         (url_for("catalog.compare", _external=True), "weekly", "0.3"),
     ]
+    # Only the bare category URL, not its filter permutations.
     urls += [
         (url_for("catalog.index", category=c.slug, _external=True), "weekly", "0.7")
         for c in categories
@@ -56,13 +99,20 @@ def sitemap():
         for p in products
     ]
 
+    from flask import current_app
+    from xml.sax.saxutils import escape
+
+    now = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+
     parts = [
         '<?xml version="1.0" encoding="UTF-8"?>',
         '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">',
     ]
     for loc, freq, priority in urls:
         parts.append("  <url>")
-        parts.append(f"    <loc>{loc}</loc>")
+        # Ampersands in a query string must be escaped or the XML is invalid.
+        parts.append(f"    <loc>{escape(loc)}</loc>")
+        parts.append(f"    <lastmod>{now}</lastmod>")
         parts.append(f"    <changefreq>{freq}</changefreq>")
         parts.append(f"    <priority>{priority}</priority>")
         parts.append("  </url>")
@@ -117,13 +167,23 @@ def seo_meta():
         "site_name": SITE_NAME,
         "site_description": SITE_DESCRIPTION,
         "og_image": url_for("seo.social_card", _external=True),
+        "canonical_url": canonical_url(),
     }
 
 
 @seo_bp.app_template_filter("json_ld")
-def json_ld(payload: dict) -> str:
-    """Serialise schema.org data safely for a <script type="application/ld+json">."""
-    return json.dumps(payload, separators=(",", ":"), default=str).replace("<", "\\u003c")
+def json_ld(payload: dict):
+    """Serialise schema.org data for a <script type="application/ld+json"> block.
+
+    Marked safe so Jinja does not HTML-escape the quotes: an escaped
+    "&quot;@context&quot;" is not valid JSON-LD and every crawler rejects it.
+    The "<" replacement still guards against a "</script>" breakout, and
+    U+2028/2029 are escaped because they are literal newlines in JavaScript.
+    """
+    text = json.dumps(payload, separators=(",", ":"), default=str)
+    text = text.replace("<", "\\u003c").replace(">", "\\u003e").replace("&", "\\u0026")
+    text = text.replace("\u2028", "\\u2028").replace("\u2029", "\\u2029")
+    return Markup(text)
 
 
 @seo_bp.app_template_filter("money_display")

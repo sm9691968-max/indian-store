@@ -302,7 +302,7 @@ def checkout():
 
         coupon = totals["coupon"]
         order = Order(
-            reference=f"NX-{secrets.token_hex(4).upper()}",
+            reference=f"IS-{secrets.token_hex(4).upper()}",
             subtotal=totals["subtotal"],
             discount=totals["discount"],
             shipping_cost=totals["shipping_after"],

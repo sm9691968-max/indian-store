@@ -55,7 +55,7 @@ CATEGORIES = [
 PRODUCTS = [
     {
         "name": "Nebula 75 Mechanical Keyboard",
-        "sku": "NX-KB-0075",
+        "sku": "IS-KB-0075",
         "brand": "Aurora Labs",
         "category": "keyboards",
         "price": "189.00",
@@ -71,7 +71,7 @@ PRODUCTS = [
     },
     {
         "name": "Vector TKL Pro Wireless",
-        "sku": "NX-KB-0110",
+        "sku": "IS-KB-0110",
         "brand": "Aurora Labs",
         "category": "keyboards",
         "price": "154.00",
@@ -87,7 +87,7 @@ PRODUCTS = [
     },
     {
         "name": "Orbit 27 4K Monitor",
-        "sku": "NX-DP-2727",
+        "sku": "IS-DP-2727",
         "brand": "Lumen",
         "category": "displays",
         "price": "649.00",
@@ -103,7 +103,7 @@ PRODUCTS = [
     },
     {
         "name": "Prism 32 Curved Display",
-        "sku": "NX-DP-3200",
+        "sku": "IS-DP-3200",
         "brand": "Lumen",
         "category": "displays",
         "price": "429.00",
@@ -120,7 +120,7 @@ PRODUCTS = [
     },
     {
         "name": "Echo ANC Headphones",
-        "sku": "NX-AU-0410",
+        "sku": "IS-AU-0410",
         "brand": "Resonant",
         "category": "audio",
         "price": "279.00",
@@ -136,7 +136,7 @@ PRODUCTS = [
     },
     {
         "name": "Sonar Studio Monitor Pair",
-        "sku": "NX-AU-0525",
+        "sku": "IS-AU-0525",
         "brand": "Resonant",
         "category": "audio",
         "price": "399.00",
@@ -152,7 +152,7 @@ PRODUCTS = [
     },
     {
         "name": "Helix NVMe 2TB Gen4",
-        "sku": "NX-ST-2200",
+        "sku": "IS-ST-2200",
         "brand": "Vaultline",
         "category": "storage",
         "price": "219.00",
@@ -168,7 +168,7 @@ PRODUCTS = [
     },
     {
         "name": "Vault NAS 4-Bay Chassis",
-        "sku": "NX-ST-4004",
+        "sku": "IS-ST-4004",
         "brand": "Vaultline",
         "category": "storage",
         "price": "529.00",
@@ -185,7 +185,7 @@ PRODUCTS = [
     },
     {
         "name": "Aether Wi-Fi 7 Router",
-        "sku": "NX-NT-7001",
+        "sku": "IS-NT-7001",
         "brand": "Signalworks",
         "category": "networking",
         "price": "349.00",
@@ -201,7 +201,7 @@ PRODUCTS = [
     },
     {
         "name": "Gaia Mechanical Numpad",
-        "sku": "NX-KB-0031",
+        "sku": "IS-KB-0031",
         "brand": "Aurora Labs",
         "category": "keyboards",
         "price": "79.00",
@@ -316,41 +316,498 @@ _GEN_BRANDS = [
     "Meridian", "Copperfield", "Larkspur", "Verdant", "Quartzline",
 ]
 
+# Each category is built from product lines: a noun plus the variants that
+# actually make sense for it, so the catalogue never produces nonsense like
+# "Alice Layout Keycap Set" or "24in FHD Ultrawide".
+#
+# Every category must expose exactly _GEN_FLAT variants across its lines, and
+# exactly 10 series names, so that 10 brands x 40 variants covers the 400
+# products each category needs with a perfectly even, collision-free spread.
+_GEN_SERIES = {
+    "keyboards": ["Aero", "Tactile", "Compact", "Ergo", "Numpad", "Split",
+                  "Lowprofile", "Gasket", "Meridian", "Foundry"],
+    "displays": ["Vista", "Clarity", "Widefield", "Curved", "Reference", "Ultra",
+                 "Studio", "Compact", "Halcyon", "Panorama"],
+    "audio": ["Echo", "Resonance", "Studio", "Quietline", "Pulse", "Nomad",
+              "Aria", "Crescent", "Verdant", "Larkspur"],
+    "storage": ["Helix", "Vault", "Turbine", "Cascade", "Granite", "Pylon",
+                "Ridge", "Atlas", "Copperfield", "Ironwood"],
+    "networking": ["Signal", "Orbit", "Beacon", "Relay", "Vector", "Pulse",
+                   "Anchor", "Strata", "Quartzline", "Northwind"],
+}
+
+_GEN_FLAT = 40
+
 _GEN_MODELS = {
     "keyboards": {
         "code": "KB",
-        "series": ["Aero", "Tactile", "Compact", "Ergo", "Numpad", "Split", "Lowprofile", "Gasket"],
-        "nouns": ["Keyboard", "Mechanical Board", "Tenkeyless", "Keycap Set", "Switch Pack"],
         "price": (39.00, 289.00),
-        "words": ["hot-swap sockets", "PBT doubleshot caps", "QMK/VIA firmware", "gasket mount"],
+        "warranty": 2,
+        "tags": [
+            "hot-swappable sockets",
+            "PBT doubleshot keycaps",
+            "QMK/VIA remappable firmware",
+            "a gasket-mounted aluminium plate",
+            "south-facing per-key RGB",
+        ],
+        "lines": [
+            {
+                "noun": "Mechanical Keyboard",
+                "variants": ['60%', '65%', '75%', 'TKL', 'Full Size', '96%',
+                             '1800 Compact', 'Alice Layout', 'Slim 75%'],
+                "specs": [
+                    ("Layout", "{variant}"),
+                    ("Mounting", ["Gasket mount, aluminium plate", "Top mount, aluminium plate",
+                                  "Gasket mount, polycarbonate plate", "Tray mount, steel plate"]),
+                    ("Switches", ["Linear 45g", "Tactile 55g", "Clicky 60g", "Silent linear 45g"]),
+                    ("Connection", ["USB-C, detachable braided", "Wired USB-C, fixed cable",
+                                    "Tri-mode wireless", "Bluetooth 5.3 and 2.4GHz"]),
+                    ("Firmware", ["QMK / VIA, remappable offline", "VIA only, remappable offline"]),
+                    ("Keycaps", ["PBT doubleshot, shine-resistant", "ABS doubleshot, pad-printed"]),
+                ],
+            },
+            {
+                "noun": "Wireless Keyboard",
+                "variants": ['TKL', 'Full Size', '75%', '65%', '60%', 'Compact', 'Slim', 'Ergonomic'],
+                "specs": [
+                    ("Layout", "{variant}"),
+                    ("Connection", ["Bluetooth 5.3 and 2.4GHz", "2.4GHz only, dongle included",
+                                    "Bluetooth 5.3, three-device pairing"]),
+                    ("Battery", ["4000mAh, roughly two months per charge",
+                                 "3000mAh, roughly six weeks per charge",
+                                 "2500mAh, roughly three weeks per charge"]),
+                    ("Charging", ["USB-C, full charge in 2h", "USB-C, full charge in 90 min"]),
+                    ("Backlight", ["Per-key RGB", "White LED only", "No backlight"]),
+                    ("Firmware", "QMK / VIA, remappable offline"),
+                ],
+            },
+            {
+                "noun": "Keycap Set",
+                "variants": ['PBT Doubleshot', 'Dye-Sub PBT', 'ABS Doubleshot', 'Cherry Profile',
+                             'OEM Profile', 'SA Profile', 'Blank Kit'],
+                "specs": [
+                    ("Profile", "{variant}"),
+                    ("Material", ["PBT, 1.5mm", "ABS, 1.5mm", "PBT, 1.2mm"]),
+                    ("Legend", ["Doubleshot, shine-resistant", "Dye-sub, fade resistant"]),
+                    ("Compatibility", ["60% to full-size ANSI", "60% to TKL ANSI", "Universal MX stem"]),
+                    ("Key count", ["87 keys", "104 keys", "129 keys", "142 keys"]),
+                    ("Warranty", "2 years"),
+                ],
+            },
+            {
+                "noun": "Switch Pack",
+                "variants": ['10 Pack Linear', '10 Pack Tactile', '70 Pack Linear', '70 Pack Tactile',
+                             '90 Pack Clicky', 'Silent Pack'],
+                "specs": [
+                    ("Configuration", "{variant}"),
+                    ("Type", ["Linear 45g", "Tactile 55g", "Clicky 60g", "Silent linear 45g"]),
+                    ("Housing", ["Nylon top, nylon bottom", "Polycarbonate top, nylon bottom"]),
+                    ("Stem", ["POM", "POM, long-pole", "UHMWPE"]),
+                    ("Spring", ["Gold-plated 63.5g", "Stainless 60g", "Stainless 55g"]),
+                    ("Lubricated", ["Factory lubed, 105g", "Dry, lubing recommended"]),
+                ],
+            },
+            {
+                "noun": "Low-Profile Board",
+                "variants": ['60% Slim', '65% Slim', '75% Slim', 'Full Slim', 'TKL Slim'],
+                "specs": [
+                    ("Layout", "{variant}"),
+                    ("Profile", "Low-profile, 18mm front height"),
+                    ("Switches", ["Low-profile linear 40g", "Low-profile tactile 45g"]),
+                    ("Connection", ["Bluetooth 5.3 and 2.4GHz", "USB-C, detachable"]),
+                    ("Battery", "2000mAh, roughly four weeks per charge"),
+                    ("Warranty", "2 years"),
+                ],
+            },
+            {
+                "noun": "Ergonomic Board",
+                "variants": ['Alice Layout', 'Split', 'Contoured', 'Columnar', 'Tent'],
+                "specs": [
+                    ("Layout", "{variant}"),
+                    ("Tent angle", ["5 degrees", "8 degrees", "10 degrees"]),
+                    ("Split", ["Yes, two halves", "No, single unibody"]),
+                    ("Connection", ["USB-C per half", "Bluetooth 5.3 and 2.4GHz"]),
+                    ("Wrist rest", ["Magnetic, included", "None, sold separately"]),
+                    ("Warranty", "2 years"),
+                ],
+            },
+        ],
     },
     "displays": {
         "code": "DP",
-        "series": ["Vista", "Clarity", "Wide", "Curved", "Reference", "Ultra", "Studio", "Compact"],
-        "nouns": ["Monitor", "Display", "Panel", "Ultrawide", "Screen"],
         "price": (159.00, 1899.00),
-        "words": ["IPS panel", "1440p to 4K", "USB-C power delivery", "hardware calibration"],
+        "warranty": 3,
+        "tags": [
+            "an IPS panel with 98% DCI-P3 coverage",
+            "factory calibration to Delta E under 2",
+            "USB-C power delivery up to 90W",
+            "a height, pivot and tilt adjustable stand",
+            "adaptive sync from 48Hz to 165Hz",
+        ],
+        "lines": [
+            {
+                "noun": "Monitor",
+                "variants": ['24in FHD', '24in QHD', '27in QHD', '27in 4K', '32in 4K', '32in QHD',
+                             '28in 4K', '34in Ultrawide', '49in Ultrawide', '42in 4K'],
+                "specs": [
+                    ("Size", "{variant}"),
+                    ("Resolution", "AUTO_RES"),
+                    ("Refresh rate", ["60Hz", "100Hz", "144Hz", "165Hz", "240Hz"]),
+                    ("Panel", ["Fast IPS", "IPS", "VA", "Mini-LED"]),
+                    ("Colour", ["99% sRGB", "98% DCI-P3", "95% DCI-P3", "99% sRGB, factory calibrated"]),
+                    ("Connectivity", ["HDMI 2.1, DP 1.4", "USB-C 90W, DP 1.4, HDMI 2.1",
+                                      "USB-C 65W, HDMI 2.0", "DP 1.4, HDMI 2.0 x2"]),
+                ],
+            },
+            {
+                "noun": "Ultrawide",
+                "variants": ['34in UWQHD', '34in Curved QHD', '40in Curved QHD', '49in Curved QHD',
+                             '34in 4K', '49in 4K', '30in UWQHD', '46in Ultrawide'],
+                "specs": [
+                    ("Size", "{variant}"),
+                    ("Resolution", "AUTO_RES"),
+                    ("Refresh rate", ["60Hz", "100Hz", "144Hz", "165Hz"]),
+                    ("Curvature", ["1000R", "1500R", "1800R", "Flat"]),
+                    ("Panel", "VA"),
+                    ("Connectivity", ["HDMI 2.1, DP 1.4", "USB-C 90W, DP 1.4, HDMI 2.1"]),
+                ],
+            },
+            {
+                "noun": "Display",
+                "variants": ['22in FHD', '24in FHD', '24in QHD', '27in QHD', '27in 4K', '32in 4K',
+                             '28in 4K', '34in Ultrawide'],
+                "specs": [
+                    ("Size", "{variant}"),
+                    ("Resolution", "AUTO_RES"),
+                    ("Refresh rate", ["60Hz", "75Hz", "100Hz", "144Hz"]),
+                    ("Panel", ["IPS", "VA", "Fast IPS"]),
+                    ("Bezels", ["Three-sided frameless", "Four-sided frameless"]),
+                    ("VESA", ["100x100mm", "75x75mm", "200x200mm"]),
+                ],
+            },
+            {
+                "noun": "Panel",
+                "variants": ['Reference 27in QHD', 'Reference 32in 4K', 'Studio 24in FHD',
+                             'Studio 32in QHD', 'Mini-LED 27in 4K', 'Mini-LED 32in 4K'],
+                "specs": [
+                    ("Model", "{variant}"),
+                    ("Resolution", "AUTO_RES"),
+                    ("Refresh rate", ["60Hz", "144Hz"]),
+                    ("Colour", ["99% DCI-P3, Delta E under 2", "98% DCI-P3, calibrated in factory"]),
+                    ("Uniformity", "1% factory verified, report included"),
+                    ("Warranty", "3 years, advance replacement"),
+                ],
+            },
+            {
+                "noun": "Screen",
+                "variants": ['24in Office FHD', '27in Office QHD', '34in Curved Gaming QHD',
+                             '27in Gaming QHD', '32in Gaming QHD', '49in Productivity Ultrawide'],
+                "specs": [
+                    ("Size", "{variant}"),
+                    ("Resolution", "AUTO_RES"),
+                    ("Refresh rate", ["60Hz", "144Hz", "165Hz", "240Hz"]),
+                    ("Sync", ["Adaptive sync, 48-165Hz", "G-Sync compatible", "FreeSync Premium"]),
+                    ("Response", ["1ms MPRT", "0.5ms MPRT", "4ms GTG"]),
+                    ("Warranty", "3 years"),
+                ],
+            },
+            {
+                "noun": "Desk Mount",
+                "variants": ['Single 27in', 'Dual 32in'],
+                "specs": [
+                    ("Configuration", "{variant}"),
+                    ("Desk mount", "Gas-spring arm, clamp to 80mm"),
+                    ("Cable routing", "Integrated, no visible slack"),
+                    ("Load per arm", "Up to 9kg"),
+                    ("Rotation", "360 degrees at every joint"),
+                    ("Warranty", "5 years"),
+                ],
+            },
+        ],
     },
     "audio": {
         "code": "AU",
-        "series": ["Echo", "Resonance", "Studio", "Quiet", "Pulse", "Nomad", "Aria", "Crescent"],
-        "nouns": ["Headphones", "Earbuds", "Speakers", "Soundbar", "Microphone", "Amplifier"],
         "price": (29.00, 749.00),
-        "words": ["40mm drivers", "active noise cancelling", "Bluetooth 5.3", "lossless over USB-C"],
+        "warranty": 2,
+        "tags": [
+            "40mm dynamic drivers tuned in-house",
+            "hybrid active noise cancelling with transparency mode",
+            "Bluetooth 5.3 with multipoint pairing",
+            "lossless playback over USB-C",
+            "memory-foam earcups wrapped in protein leather",
+        ],
+        "lines": [
+            {
+                "noun": "Over-Ear Headphones",
+                "variants": ["ANC Wireless", "Studio Wired", "Reference Closed", "ANC Pro",
+                             "Wireless Plus", "Travel Foldable", "Hi-Res Wired", "Studio Mk II",
+                             "ANC Max", "Open-Back Studio"],
+                "specs": [
+                    ("Configuration", "{variant}"),
+                    ("Drivers", ["40mm dynamic", "45mm dynamic", "50mm dynamic"]),
+                    ("Noise cancelling", ["Hybrid ANC, adjustable", "Not fitted",
+                                          "Feedforward ANC, transparency"]),
+                    ("Battery", ["38h with ANC, 55h off", "60h playback, 8h with ANC",
+                                 "Not battery powered"]),
+                    ("Codecs", ["SBC, AAC, LDAC, aptX HD", "SBC, AAC", "SBC, AAC, aptX Lossless"]),
+                    ("Weight", ["268g", "320g", "285g"]),
+                ],
+            },
+            {
+                "noun": "Wireless Earbuds",
+                "variants": ["ANC Flagship", "Sport", "Hi-Res", "Long Battery", "Studio Tuning",
+                             "Compact", "ANC Lite", "Travel"],
+                "specs": [
+                    ("Configuration", "{variant}"),
+                    ("Drivers", ["11mm planar", "12mm dynamic", "Dual 10mm dynamic"]),
+                    ("Noise cancelling", ["Adaptive ANC, 3 levels", "Passive isolation only"]),
+                    ("Battery", ["8h buds, 32h with case", "10h buds, 40h with case",
+                                 "6h buds, 24h with case"]),
+                    ("Water resistance", ["IPX5", "IPX4", "IP57"]),
+                    ("Weight", ["5.2g per bud", "4.8g per bud"]),
+                ],
+            },
+            {
+                "noun": "Bookshelf Speakers",
+                "variants": ["2-Way Pair", "3-Way Pair", "Active Powered", "Studio Monitor",
+                             "Compact Pair", "Floorstanding Pair"],
+                "specs": [
+                    ("Configuration", "{variant}"),
+                    ("Drivers", ["5.25in woofer, 1in tweeter", "6.5in woofer, 1in tweeter",
+                                 "8in woofer, 1in ribbon tweeter"]),
+                    ("Power", ["Passive, 90W", "Active, 120W built-in", "Passive, 140W"]),
+                    ("Frequency response", "48Hz - 25kHz"),
+                    ("Inputs", ["Binding posts", "RCA, optical, USB-C",
+                                "Binding posts, XLR balanced"]),
+                    ("Enclosure", "B MDF, braced, walnut veneer"),
+                    ("Weight", ["7.4kg per pair", "4.1kg per pair", "19.8kg per pair"]),
+                ],
+            },
+            {
+                "noun": "Soundbar",
+                "variants": ["2.1 Channel", "3.1 Channel", "5.1 Channel", "Compact", "Atmos", "Dolby TrueHD"],
+                "specs": [
+                    ("Configuration", "{variant}"),
+                    ("Channels", ["2.1, 320W", "3.1, 420W", "5.1, 620W", "2.0, 200W"]),
+                    ("Drivers", ["Dual 45mm full-range", "Tractrix horn-loaded tweeter"]),
+                    ("Codecs", ["Dolby Atmos, DTS:X", "Dolby TrueHD", "Dolby Digital Plus"]),
+                    ("Connectivity", ["HDMI eARC, optical, BT 5.3", "HDMI eARC, optical, Wi-Fi"]),
+                    ("Width", ["950mm", "1200mm", "1650mm", "600mm"]),
+                ],
+            },
+            {
+                "noun": "Condenser Microphone",
+                "variants": ["USB Desktop", "USB Studio", "XLR Cardioid", "XLR Multipattern",
+                             "USB Streaming", "Large Diaphragm"],
+                "specs": [
+                    ("Configuration", "{variant}"),
+                    ("Capsule", ["17mm electret condenser", "25mm large diaphragm condenser"]),
+                    ("Pattern", ["Cardioid", "Cardioid, 8 pattern switchable", "Figure-8"]),
+                    ("Connection", ["USB-C, zero-latency monitoring", "XLR, needs preamp",
+                                    "USB-C and XLR"]),
+                    ("Self noise", ["16dBA", "12dBA", "7dBA"]),
+                    ("Mount", ["Desk stand included", "Shock mount and boom arm", "Boom arm"]),
+                ],
+            },
+            {
+                "noun": "Headphone Amplifier",
+                "variants": ["Desktop Balanced", "Pocket", "Desktop Tube", "Portable Balanced"],
+                "specs": [
+                    ("Configuration", "{variant}"),
+                    ("Output", ["4.4mm balanced, 6.35mm single-ended", "3.5mm single-ended",
+                                "XLR and 6.35mm, single-ended"]),
+                    ("Power", ["1200mW into 32ohm", "350mW into 32ohm", "2.5W into 32ohm"]),
+                    ("Noise floor", ["8dB at 1V", "-110dB", "-118dB"]),
+                    ("Dac", ["PCM 768kHz/32-bit", "PCM 384kHz/32-bit"]),
+                    ("Inputs", ["USB-C, optical, RCA", "USB-C, 3.5mm"]),
+                ],
+            },
+        ],
     },
     "storage": {
         "code": "ST",
-        "series": ["Helix", "Vault", "Turbine", "Cascade", "Granite", "Pylon", "Ridge", "Atlas"],
-        "nouns": ["SSD", "Hard Drive", "Enclosure", "Docking Station", "Memory Card", "Network Storage"],
         "price": (24.00, 649.00),
-        "words": ["Gen4 PCIe transfer", "hardware encryption", "aluminium housing", "hot-swap bays"],
+        "warranty": 5,
+        "tags": [
+            "PCIe 4.0 transfer rates up to 7400MB/s",
+            "hardware AES-256 encryption",
+            "an anodised aluminium housing rated to 2m drop",
+            "a fanless design that runs silent",
+            "hot-swap bays with tool-free trays",
+        ],
+        "lines": [
+            {
+                "noun": "Portable SSD",
+                "variants": ['500GB', '1TB', '2TB', '4TB', '500GB Rugged', '1TB Rugged',
+                             '2TB Gen4', '4TB Gen4'],
+                "specs": [
+                    ("Capacity", "{variant}"),
+                    ("Interface", ["USB 3.2 Gen 2, 10Gbps", "USB 4, 40Gbps"]),
+                    ("Sequential read", ["1050MB/s", "2000MB/s", "3800MB/s"]),
+                    ("Sequential write", ["1000MB/s", "1800MB/s", "3600MB/s"]),
+                    ("Endurance", ["300TBW over 5 years", "600TBW over 5 years", "1200TBW over 5 years"]),
+                    ("Protection", ["2m drop, IP54", "3m drop, IP65", "2m drop, hardware AES-256"]),
+                ],
+            },
+            {
+                "noun": "Desktop SSD",
+                "variants": ['1TB', '2TB', '4TB', '8TB', '2TB Gen4', '4TB Gen4', '1TB Gen3', '8TB Gen4'],
+                "specs": [
+                    ("Capacity", "{variant}"),
+                    ("Interface", ["PCIe 4.0 x4, M.2 2280", "PCIe 3.0 x4, M.2 2280"]),
+                    ("Sequential read", ["7000MB/s", "5600MB/s", "3500MB/s"]),
+                    ("Sequential write", ["6300MB/s", "5000MB/s", "3000MB/s"]),
+                    ("Endurance", ["600TBW over 5 years", "1200TBW over 5 years", "2400TBW over 5 years"]),
+                    ("Cooling", ["Aluminium heatsink included", "Fanless, 0.3W idle"]),
+                ],
+            },
+            {
+                "noun": "Hard Drive",
+                "variants": ['2TB', '4TB', '6TB', '8TB', '10TB', '12TB', '16TB', '18TB'],
+                "specs": [
+                    ("Capacity", "{variant}"),
+                    ("Interface", "SATA 6Gbps, 3.5in"),
+                    ("Sequential read", ["180MB/s", "220MB/s", "260MB/s"]),
+                    ("Cache", ["256MB", "512MB", "1GB"]),
+                    ("Workload", ["5400rpm CMR", "7200rpm CMR"]),
+                    ("Warranty", "5 years"),
+                ],
+            },
+            {
+                "noun": "USB-C Enclosure",
+                "variants": ['USB4 M.2', '1 Bay USB 3.2', '2 Bay USB4', '4 Bay USB 3.2',
+                             '2.5GbE Bridge', '4 Bay Thunderbolt'],
+                "specs": [
+                    ("Configuration", "{variant}"),
+                    ("Bays", ["1 x M.2 2280", "2 x M.2 2280", "4 x 3.5in SATA"]),
+                    ("Interface", ["USB 3.2 Gen 2, 10Gbps", "USB4, 40Gbps", "Thunderbolt 3, 40Gbps"]),
+                    ("Transfer", ["1050MB/s", "2000MB/s", "3000MB/s"]),
+                    ("Cooling", "Aluminium, fanless"),
+                    ("Warranty", "3 years"),
+                ],
+            },
+            {
+                "noun": "Docking Station",
+                "variants": ["Thunderbolt 4", "USB4 12-Port", "Dual Display", "Triple 4K",
+                             "Portable 8-Port", "USB4 16-Port"],
+                "specs": [
+                    ("Configuration", "{variant}"),
+                    ("Host interface", ["Thunderbolt 4, 40Gbps", "USB-C, 10Gbps"]),
+                    ("Displays", ["Dual 4K at 60Hz", "Triple 4K at 60Hz", "Single 8K at 60Hz"]),
+                    ("Ports", ["3x USB-C, 6x USB-A, 2.5GbE, SD, TB4",
+                               "2x USB-C, 4x USB-A, HDMI, SD", "6x USB-A, HDMI, 2.5GbE"]),
+                    ("Power delivery", ["Up to 100W to host", "Up to 65W to host", "Up to 140W to host"]),
+                    ("Warranty", "3 years"),
+                ],
+            },
+            {
+                "noun": "Memory Card",
+                "variants": ['128GB UHS-II', '256GB UHS-II', '512GB UHS-II', '1TB UHS-II'],
+                "specs": [
+                    ("Capacity", "{variant}"),
+                    ("Interface", ["UHS-II, up to 300MB/s", "UHS-I, up to 200MB/s"]),
+                    ("Sequential read", ["300MB/s", "200MB/s", "90MB/s"]),
+                    ("Sequential write", ["260MB/s", "180MB/s", "80MB/s"]),
+                    ("Rating", ["V90, sustained write", "V60", "U3, A2"]),
+                    ("Warranty", "Lifetime"),
+                ],
+            },
+        ],
     },
     "networking": {
         "code": "NW",
-        "series": ["Signal", "Orbit", "Beacon", "Relay", "Vector", "Pulse", "Anchor", "Strata"],
-        "nouns": ["Router", "Switch", "Access Point", "Mesh Node", "Adapter", "Modem"],
         "price": (29.00, 899.00),
-        "words": ["Wi-Fi 7 radio", "multi-gigabit ports", "WPA3 encryption", "band steering"],
+        "warranty": 3,
+        "tags": [
+            "a Wi-Fi 7 radio with 4x4 MIMO",
+            "multi-gigabit ports that negotiate per cable",
+            "WPA3 encryption with per-client guest networks",
+            "band steering across three radios",
+            "a web dashboard plus local API control",
+        ],
+        "lines": [
+            {
+                "noun": "Router",
+                "variants": ["AX1800", "AX3000", "AX5400", "Wi-Fi 7 BE9000", "Wi-Fi 7 BE12000",
+                             "Gigabit", "Tri-Band Mesh", "Dual-Band Mesh", "4G LTE", "Enterprise VPN"],
+                "specs": [
+                    ("Class", "{variant}"),
+                    ("Radios", ["2.4GHz and 5GHz dual-band", "2.4, 5 and 6GHz tri-band",
+                                "2.4GHz single-band"]),
+                    ("Ports", ["1x 2.5GbE WAN, 3x GbE LAN", "1x GbE WAN, 3x GbE LAN",
+                               "2x 2.5GbE, PoE++", "1x 10GbE WAN, 4x 2.5GbE LAN"]),
+                    ("Security", ["WPA3, per-client guest networks", "WPA2/WPA3, VLAN tagging",
+                                  "WPA3 with hardware acceleration"]),
+                    ("Management", "Web dashboard, local API, SSH"),
+                    ("Warranty", "3 years"),
+                ],
+            },
+            {
+                "noun": "Switch",
+                "variants": ["8-Port Gigabit", "16-Port Gigabit", "24-Port Gigabit PoE",
+                             "8-Port 2.5GbE", "5-Port Multi-Gig", "16-Port Managed",
+                             "24-Port Managed PoE", "2-Port SFP+"],
+                "specs": [
+                    ("Configuration", "{variant}"),
+                    ("Ports", ["8 x GbE", "16 x GbE", "24 x GbE, 4 PoE+", "8 x 2.5GbE", "2 x SFP+"]),
+                    ("PoE budget", ["None", "65W", "180W", "370W"]),
+                    ("Switching capacity", ["16Gbps", "32Gbps", "56Gbps", "100Gbps"]),
+                    ("Managed", ["Unmanaged", "Fully managed, L2 and L3"]),
+                    ("Warranty", "3 years, lifetime fan warranty"),
+                ],
+            },
+            {
+                "noun": "Access Point",
+                "variants": ["Wi-Fi 6 Ceiling", "Wi-Fi 6E Ceiling", "Wi-Fi 7 Wall Plate", "Outdoor IP67",
+                             "Compact Desktop", "Tri-Band Ceiling", "High-Density Ceiling", "PoE Injector"],
+                "specs": [
+                    ("Configuration", "{variant}"),
+                    ("Radios", ["2.4GHz and 5GHz dual-band", "2.4, 5 and 6GHz tri-band"]),
+                    ("Coverage", ["180m2 typical, medium density", "300m2 typical, high density",
+                                  "Outdoor, 400m line of sight"]),
+                    ("Power", ["PoE 802.3at", "PoE 802.3af", "DC adapter included"]),
+                    ("Management", "Controller or standalone, cloud optional"),
+                    ("Warranty", "3 years"),
+                ],
+            },
+            {
+                "noun": "Mesh Node",
+                "variants": ["2-Pack", "3-Pack", "4-Pack", "Wi-Fi 7 2-Pack", "Wi-Fi 7 3-Pack"],
+                "specs": [
+                    ("Pack", "{variant}"),
+                    ("Radios", ["2.4GHz and 5GHz dual-band", "2.4, 5 and 6GHz tri-band"]),
+                    ("Backhaul", ["Dedicated wireless backhaul", "Wired backhaul, auto-detect"]),
+                    ("Coverage per node", ["180m2", "220m2", "280m2"]),
+                    ("Ethernet", "1x 2.5GbE per node"),
+                    ("Warranty", "3 years"),
+                ],
+            },
+            {
+                "noun": "Wi-Fi Adapter",
+                "variants": ["USB-C AX3000", "USB-C Wi-Fi 7", "PCIe AX5400", "M.2 Wi-Fi 7", "USB Nano"],
+                "specs": [
+                    ("Configuration", "{variant}"),
+                    ("Standard", ["Wi-Fi 6 AX3000", "Wi-Fi 7 BE9000", "Wi-Fi 6 AX1800"]),
+                    ("Interface", ["USB-C", "PCIe x1", "M.2 2230", "USB-A nano"]),
+                    ("Antenna", ["Dual, internal", "Dual, external dipole", "Four, external dipole"]),
+                    ("Drivers", ["Driverless on Windows 11", "Windows and Linux, kernel 5.10+"]),
+                    ("Warranty", "2 years"),
+                ],
+            },
+            {
+                "noun": "Modem",
+                "variants": ["DOCSIS 3.1", "Fiber ONT", "5G Cellular", "LTE Backup"],
+                "specs": [
+                    ("Configuration", "{variant}"),
+                    ("Downstream", ["2000Mbps", "10000Mbps", "550Mbps", "150Mbps"]),
+                    ("Upstream", ["35Mbps", "10000Mbps", "50Mbps", "20Mbps"]),
+                    ("Interfaces", ["RJ45 + 2.5GbE", "RJ45, SC/APC adapter", "SIM + 2.5GbE",
+                                    "RJ45 failover"]),
+                    ("Power", "External 12V adapter"),
+                    ("Warranty", "2 years"),
+                ],
+            },
+        ],
     },
 }
 
@@ -364,13 +821,106 @@ _GEN_IMAGES = [
 
 _GEN_BADGES = [None, None, None, None, None, None, "New", "Best seller", "Clearance"]
 
+# Resolution follows the token in the model name, so a "24in FHD" never ships
+# with a 4K panel listed against it.
+_GEN_RESOLUTIONS = [
+    ("Ultrawide", "5120x1440"),
+    ("UWQHD", "3440x1440"),
+    ("4K", "3840x2160"),
+    ("FHD", "1920x1080"),
+    ("QHD", "2560x1440"),
+]
+
+# Copy is written to stay true for every line in the category, including the
+# accessories. "It arrives configured" and "quiet enough for an open office"
+# were both wrong for a keycap set or a switch pack.
+# Category-level marketing tags were being asserted about lines they did not
+# fit: a "Studio Wired" headphone was described as Bluetooth 5.3, because the
+# tag pool was shared across the whole category. The copy is now built from the
+# product line's own spec rows, so a sentence can never contradict the table
+# printed directly beneath it.
+_GEN_DESCRIPTIONS = {
+    "keyboards": [
+        "{name} — {fact0}, {fact1}, {fact2}. Part of the {brand} range, covered for {warranty} years and dispatched next day across India.",
+        "The {variant} {noun} in the {brand} range. {fact0} and {fact1} are what you are paying for; the rest is table stakes. {warranty}-year warranty.",
+        "{name} sits in the middle of the {brand} range. {fact0}, {fact1} and {fact2} are the three worth comparing before you buy.",
+    ],
+    "displays": [
+        "{name} — {fact0}, {fact1}, {fact2}. Part of the {brand} range, covered for {warranty} years and dispatched next day across India.",
+        "The {variant} {noun} in the {brand} range. {fact0} and {fact1} are what you are paying for; the rest is table stakes. {warranty}-year warranty.",
+        "{name} sits in the middle of the {brand} range. {fact0}, {fact1} and {fact2} are the three worth comparing before you buy.",
+    ],
+    "audio": [
+        "{name} — {fact0}, {fact1}, {fact2}. Part of the {brand} range, covered for {warranty} years and dispatched next day across India.",
+        "The {variant} {noun} in the {brand} range. {fact0} and {fact1} are what you are paying for; the rest is table stakes. {warranty}-year warranty.",
+        "{name} sits in the middle of the {brand} range. {fact0}, {fact1} and {fact2} are the three worth comparing before you buy.",
+    ],
+    "storage": [
+        "{name} — {fact0}, {fact1}, {fact2}. Part of the {brand} range, covered for {warranty} years and dispatched next day across India.",
+        "The {variant} {noun} in the {brand} range. {fact0} and {fact1} are what you are paying for; the rest is table stakes. {warranty}-year warranty.",
+        "{name} sits in the middle of the {brand} range. {fact0}, {fact1} and {fact2} are the three worth comparing before you buy.",
+    ],
+    "networking": [
+        "{name} — {fact0}, {fact1}, {fact2}. Part of the {brand} range, covered for {warranty} years and dispatched next day across India.",
+        "The {variant} {noun} in the {brand} range. {fact0} and {fact1} are what you are paying for; the rest is table stakes. {warranty}-year warranty.",
+        "{name} sits in the middle of the {brand} range. {fact0}, {fact1} and {fact2} are the three worth comparing before you buy.",
+    ],
+}
+
 
 def _money(value: float) -> Decimal:
     return Decimal(str(round(value, 2))).quantize(Decimal("0.01"))
 
 
+def _validate() -> None:
+    """Fail loudly if a future edit breaks the even 10 x 40 spread."""
+    for name, spec in _GEN_MODELS.items():
+        flat = sum(len(line["variants"]) for line in spec["lines"])
+        if flat != _GEN_FLAT:
+            raise ValueError(
+                f"{name}: {flat} variants, expected {_GEN_FLAT} "
+                f"(so every brand gets an equal slice)"
+            )
+        if len(_GEN_SERIES[name]) != 10:
+            raise ValueError(f"{name}: expected 10 series names, got {len(_GEN_SERIES[name])}")
+        if name not in _GEN_DESCRIPTIONS:
+            raise ValueError(f"{name}: no description templates")
+
+
+def _resolve(value: str, variant: str) -> str:
+    if value != "AUTO_RES":
+        return value
+    for token, resolution in _GEN_RESOLUTIONS:
+        if token in variant:
+            return resolution
+    raise ValueError(f"cannot infer a resolution for variant {variant!r}")
+
+
+def _resolve_specs(line: dict, variant: str, rng: random.Random) -> list[tuple[str, str]]:
+    """Pick a value for every spec row of a product line."""
+    rows = []
+    for label, value in line["specs"]:
+        if isinstance(value, list):
+            value = rng.choice(value)
+        rows.append((label, _resolve(value.replace("{variant}", variant), variant)))
+    return rows
+
+
+def _display_noun(noun: str) -> str:
+    """Lowercase a noun for mid-sentence use, but leave acronyms alone."""
+    if any(ch.isupper() for ch in noun[1:]):
+        return noun
+    return noun.lower()
+
+
+def _phrase(rows: list[tuple[str, str]], start: int, stop: int) -> str:
+    """Render a slice of spec rows as prose: "battery 38h, weight 268g"."""
+    return ", ".join(f"{label.lower()} {value}" for label, value in rows[start:stop])
+
+
 def build_generated_products(count: int = GENERATED_COUNT) -> list[dict]:
     """Return ``count`` deterministic product payloads in the PRODUCTS shape."""
+    _validate()
     rng = random.Random(_GENERATED_SEED)
     slugs = {slugify(item["name"]) for item in PRODUCTS}
     categories = list(_GEN_MODELS)
@@ -379,13 +929,22 @@ def build_generated_products(count: int = GENERATED_COUNT) -> list[dict]:
     for index in range(count):
         category = categories[index % len(categories)]
         spec = _GEN_MODELS[category]
-        series = spec["series"]
-        noun = spec["nouns"]
+        serial = index // len(categories) + 1          # 1..400 within a category
 
-        serial = index // len(_GEN_MODELS) + 1
-        name = f"{series[serial % len(series)]} {noun[(index // 3) % len(noun)]} {category[:2].upper()}{serial:04d}"
+        # A flat 40-entry space of (line, variant) pairs and 10 series give 400
+        # unique combinations per category. The pair is the unit, not the bare
+        # variant string: "1TB" is both a Portable SSD and a Desktop SSD, and
+        # collapsing those onto one noun would duplicate the product name.
+        flat_pairs = [
+            (line, variant)
+            for line in spec["lines"]
+            for variant in line["variants"]
+        ]
+        line, variant = flat_pairs[(serial - 1) % _GEN_FLAT]
+        series = _GEN_SERIES[category][(serial - 1) // _GEN_FLAT]
 
-        # Guarantee a unique slug even if two generated names ever collide.
+        name = f"{series} {variant} {line['noun']}"
+
         base_slug = slugify(name)
         slug = base_slug
         bump = 2
@@ -398,14 +957,17 @@ def build_generated_products(count: int = GENERATED_COUNT) -> list[dict]:
         price = _money(rng.uniform(low, high))
         cost = _money(float(price) * rng.uniform(0.45, 0.72))
         compare_at = _money(float(price) * rng.uniform(1.08, 1.35)) if rng.random() < 0.3 else None
-        words = spec["words"]
+
+        brand = _GEN_BRANDS[index % len(_GEN_BRANDS)]
+        rows = _resolve_specs(line, variant, rng)
+        template = _GEN_DESCRIPTIONS[category][(index // 3) % 3]
 
         out.append(
             {
                 "name": name,
                 "slug": slug,
                 "sku": f"IS-{spec['code']}-{serial:05d}",
-                "brand": _GEN_BRANDS[index % len(_GEN_BRANDS)],
+                "brand": brand,
                 "category": category,
                 "price": str(price),
                 "compare_at": str(compare_at) if compare_at else None,
@@ -415,20 +977,34 @@ def build_generated_products(count: int = GENERATED_COUNT) -> list[dict]:
                 "badge": _GEN_BADGES[index % len(_GEN_BADGES)],
                 "featured": False,
                 "image_url": _GEN_IMAGES[index % len(_GEN_IMAGES)],
-                "description": (
-                    f"{name} from the Indian Store catalogue. Built around "
-                    f"{words[index % len(words)]} and {words[(index + 1) % len(words)]}, "
-                    "supplied with a two-year warranty and next-day dispatch."
+                "description": template.format(
+                    name=name,
+                    variant=variant,
+                    noun=_display_noun(line["noun"]),
+                    brand=brand,
+                    warranty=spec["warranty"],
+                    fact0=_phrase(rows, 0, 1),
+                    fact1=_phrase(rows, 1, 2),
+                    fact2=_phrase(rows, 2, 3),
                 ),
+                # Remaining spec rows become the bullets, so the highlights
+                # never repeat the sentence above or contradict the table.
                 "highlights": "\n".join(
-                    [
-                        words[index % len(words)].capitalize(),
-                        words[(index + 2) % len(words)].capitalize(),
-                        "Two-year Indian Store warranty",
-                        "Free delivery over the store threshold",
+                    [f"{label}: {value}" for label, value in rows[3:]]
+                    + [
+                        f"{spec['warranty']}-year Indian Store warranty",
+                        "Free next-day delivery across India",
                     ]
                 ),
+                "specs": "\n".join(f"{label}|{value}" for label, value in rows),
+                "warranty_years": spec["warranty"],
             }
+        )
+
+    names = {item["name"] for item in out}
+    if len(names) != len(out):
+        raise ValueError(
+            f"generator produced {len(out) - len(names)} duplicate product names"
         )
 
     return out
@@ -813,7 +1389,7 @@ def build_audit_and_email(db, products, customers, coupons, admin, orders, rng) 
     demo = customers[0]
     emails = [
         (demo, demo.email, "Welcome to Indian Store", "Hi Alex,\n\nYour Indian Store account is live. You start with 0 points and earn 1 per dollar spent.\n\n— The Indian Store team", "welcome", 95),
-        (demo, demo.email, "Your Indian Store order has shipped", "Hi Alex,\n\nOrder NX-1A2B3C4D left the Seattle fulfilment centre. Track it from your account.\n\n— The Indian Store team", "order", 40),
+        (demo, demo.email, "Your Indian Store order has shipped", "Hi Alex,\n\nOrder IS-1A2B3C4D left the Seattle fulfilment centre. Track it from your account.\n\n— The Indian Store team", "order", 40),
         (demo, demo.email, f"Price alert armed for {products[4].name}", f"We will email you the moment {products[4].name} drops below $249.00.", "alert", 2),
         (demo, demo.email, "Delivery update for your order", "Hi Alex,\n\nYour parcel is out for delivery today.\n\n— The Indian Store team", "order", 1),
     ]
@@ -897,7 +1473,7 @@ def build_orders(db, products, customers, coupons, rng) -> list:
 
         created = now - timedelta(days=age_days, hours=rng.randint(1, 9))
         order = Order(
-            reference=f"NX-{rng.getrandbits(32):08X}",
+            reference=f"IS-{rng.getrandbits(32):08X}",
             subtotal=subtotal,
             discount=discount,
             shipping_cost=shipping_after,

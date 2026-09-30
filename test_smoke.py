@@ -383,7 +383,7 @@ def main():
         follow_redirects=True,
     )
     check("order placed", b"confirmed" in r.data)
-    ref_match = re.search(rb"NX-[0-9A-F]{8}", r.data)
+    ref_match = re.search(rb"IS-[0-9A-F]{8}", r.data)
     check("order reference shown", ref_match is not None)
     reference = ref_match.group(0).decode()
 
@@ -516,7 +516,7 @@ def main():
     r = client.post(
         "/admin/products",
         data={"name": "Test Bench Mat XL", "price": "34.50", "stock": "12",
-              "sku": "NX-TEST-1", "brand": "Indian Store", "description": "Created by the smoke test."},
+              "sku": "IS-TEST-1", "brand": "Indian Store", "description": "Created by the smoke test."},
         follow_redirects=True,
     )
     check("admin created product", b"created" in r.data)
@@ -524,7 +524,7 @@ def main():
         from models import Product as _P
 
         created = db.session.scalar(
-            db.select(_P).filter_by(sku="NX-TEST-1")
+            db.select(_P).filter_by(sku="IS-TEST-1")
         )
         created_id = created.id
         created_slug = created.slug
@@ -535,7 +535,7 @@ def main():
     check("edit form loads", r.status_code == 200 and b"Test Bench Mat XL" in r.data)
     r = client.post(
         f"/admin/products/{created_id}/edit",
-        data={"name": "Test Bench Mat XL", "price": "39.00", "stock": "5", "sku": "NX-TEST-1",
+        data={"name": "Test Bench Mat XL", "price": "39.00", "stock": "5", "sku": "IS-TEST-1",
               "brand": "Indian Store", "description": "Updated by the smoke test.", "is_active": "1"},
         follow_redirects=True,
     )

@@ -10,14 +10,14 @@
   <meta property="og:site_name" content="{{ site_name }}">
   <meta property="og:title" content="{% block og_title %}Indian Store — curated marketplace{% endblock %}">
   <meta property="og:description" content="{{ site_description }}">
-  <meta property="og:url" content="{{ request.url }}">
+    <meta property="og:url" content="{{ canonical_url }}">
   <meta property="og:image" content="{{ og_image }}">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="{{ self.og_title() }}">
   <meta name="twitter:description" content="{{ site_description }}">
   <meta name="twitter:image" content="{{ og_image }}">
-  <link rel="canonical" href="{{ request.base_url }}">
-  {% endblock %}
+    <link rel="canonical" href="{{ canonical_url }}">
+    {% endblock %}
   <script type="application/ld+json">{% block json_ld %}{{ {
     "@context": "https://schema.org",
     "@type": "OnlineStore",

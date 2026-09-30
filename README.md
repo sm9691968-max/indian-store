@@ -49,13 +49,24 @@ The server listens on http://127.0.0.1:5000. Debug mode is opt-in via `FLASK_DEB
 - Login rate-limiting and account lockouts are enforced (see `blueprints/auth.py`).
 
 ## Tests
-Three test suites are provided. All pass with the seeded catalogue.
+Four test suites are provided. All pass with the seeded catalogue.
 
 ```bash
 python test_features.py   # 240 end-to-end feature checks
 python test_smoke.py      # 139 smoke/regression checks
 python test_security.py   # 31 security checks (CSRF enabled)
+python test_seo.py        # 21 SEO checks (JSON-LD, canonical, sitemap)
 ```
+
+## SEO
+- `/sitemap.xml` lists all 2,018 indexable URLs with `lastmod`, plus `/robots.txt` pointing at it.
+- Product pages emit schema.org `Product` JSON-LD with price, currency, availability and ratings.
+- Filter and sort query parameters are dropped from `<link rel="canonical">`, so the
+  permutations of one category collapse to a single URL instead of competing with each other.
+- Page 1 is canonical to the bare listing; pages 2+ keep `?page=`.
+
+## Payments
+Checkout is a simulation. No card is ever charged and no payment processor is wired up.
 
 ## Demo credentials
 | Role | Email | Password |
