@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block title %}Support queue — Indian Store admin{% endblock %}
+
+{% block content %}
+<section class="page-head">
+  <div class="wrap">
+    <nav class="crumbs"><a href="{{ url_for('admin.dashboard') }}">Admin</a> / Support</nav>
+    <h1>Support queue</h1>
+    <p class="muted">{{ counts.get('open', 0) }} open · {{ counts.get('pending', 0) }} awaiting customer</p>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap">
+    <div class="panel">
+      <div class="seg pad">
+        {% for s in ['open', 'pending', 'resolved', 'closed', 'all'] %}
+        <a class="seg-btn {{ 'active' if status_filter == s else '' }}"
+           href="{{ url_for('admin.tickets', status=s) }}">{{ s|capitalize }} ({{ counts.get(s, 0) }})</a>
+        {% endfor %}
+      </div>
+
+      {% if not tickets %}
+      <p class="muted pad">Nothing in this queue.</p>
+      {% else %}
+      <table class="table">
+        <thead><tr><th>Ticket</th><th>Customer</th><th>Category</th><th>Order</th><th>Updated</th><th>Status</th></tr></thead>
+        <tbody>
+          {% for t in tickets %}
+          <tr>
+            <td>
+              <a class="link" href="{{ url_for('admin.ticket_detail', reference=t.reference) }}">{{ t.subject }}</a>
+              <div class="muted sm mono">{{ t.reference }}</div>
+            </td>
+            <td>
+              {{ t.user.full_name if t.user else '—' }}
+              <div class="muted sm">{{ t.user.email if t.user else '' }}</div>
+            </td>
+            <td>{{ t.category }}</td>
+            <td class="mono sm">{{ t.order.reference if t.order else '—' }}</td>
+            <td class="muted nowrap">{{ t.updated_at|ts }}</td>
+            <td><span class="tag {{ 'tag-green' if t.status == 'resolved' else ('tag-slate' if t.status == 'closed' else 'tag-blue') }}">{{ t.status }}</span></td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% endif %}
+    </div>
+  </div>
+</section>
+{% endblock %}

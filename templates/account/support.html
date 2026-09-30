@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+{% block title %}Support — Indian Store{% endblock %}
+
+{% block content %}
+<section class="page-head">
+  <div class="wrap">
+    <nav class="crumbs"><a href="{{ url_for('account.overview') }}">Account</a> / Support</nav>
+    <h1>Support desk</h1>
+    <p class="muted">Open a ticket and follow the whole conversation here.</p>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap">
+    <div class="support-grid">
+      <div class="panel">
+        <h2>Open a ticket</h2>
+        <form method="post" action="{{ url_for('account.create_ticket') }}" class="stack">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <div>
+            <label class="form-label" for="subject">Subject</label>
+            <input type="text" id="subject" name="subject" class="form-input" required
+                   minlength="4" maxlength="180" placeholder="Order arrived with the wrong colour">
+          </div>
+          <div class="form-row-2">
+            <div>
+              <label class="form-label" for="category">Category</label>
+              <select id="category" name="category" class="form-input">
+                {% for c in ['Order', 'Delivery', 'Product', 'Returns', 'Billing', 'Account', 'Other'] %}
+                <option value="{{ c }}">{{ c }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div>
+              <label class="form-label" for="order_id">Related order</label>
+              <select id="order_id" name="order_id" class="form-input">
+                <option value="">None</option>
+                {% for o in orders %}
+                <option value="{{ o.id }}">{{ o.reference }} — {{ o.created_at.strftime('%d %b %Y') }}</option>
+                {% endfor %}
+              </select>
+            </div>
+          </div>
+          <div>
+            <label class="form-label" for="message">What happened?</label>
+            <textarea id="message" name="message" class="form-input" rows="6" required
+                      minlength="10" placeholder="Include as much detail as you can — it speeds things up."></textarea>
+          </div>
+          <button class="btn btn-primary" type="submit">Submit ticket</button>
+        </form>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head">
+          <h2>Your tickets</h2>
+          <span class="tag tag-slate">{{ tickets|length }}</span>
+        </div>
+        {% if not tickets %}
+        <p class="muted pad">Nothing open. We usually reply within one business day.</p>
+        {% else %}
+        <ul class="ticket-list">
+          {% for t in tickets %}
+          <li>
+            <a class="ticket-row" href="{{ url_for('account.ticket_detail', reference=t.reference) }}">
+              <div>
+                <div class="ticket-subject">{{ t.subject }}</div>
+                <div class="muted sm mono">{{ t.reference }} · {{ t.category }} · {{ t.updated_at|ts }}</div>
+              </div>
+              <span class="tag {{ 'tag-green' if t.status == 'resolved' else ('tag-slate' if t.status == 'closed' else 'tag-blue') }}">{{ t.status }}</span>
+            </a>
+          </li>
+          {% endfor %}
+        </ul>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</section>
+{% endblock %}

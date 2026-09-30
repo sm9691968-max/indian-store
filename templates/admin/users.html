@@ -1,0 +1,72 @@
+﻿{% extends "base.html" %}
+{% from "admin/_nav.html" import nav with context %}
+{% block title %}Customers — Indian Store Admin{% endblock %}
+
+{% block content %}
+<div class="admin-layout">
+  {{ nav('users') }}
+
+  <div>
+    <div class="admin-head">
+      <div>
+        <h1 class="section-title" style="margin-bottom:4px">Customers</h1>
+        <p class="muted" style="font-size:0.82rem">{{ users|length }} account{{ '' if users|length == 1 else 's' }}</p>
+      </div>
+    </div>
+
+    <div class="panel" style="margin-bottom:16px">
+      <form method="get" class="coupon-form">
+        <input type="search" name="q" value="{{ search }}" placeholder="Name or email..." aria-label="Search customers">
+        <button class="btn-primary" type="submit" style="height:40px; padding:0 18px">Search</button>
+        {% if search %}<a class="mini-btn" href="{{ url_for('admin.users') }}">Clear</a>{% endif %}
+      </form>
+    </div>
+
+    <div class="panel">
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>Customer</th><th>Contact</th><th>Orders</th><th>Lifetime spend</th><th>Joined</th><th>Access</th></tr>
+          </thead>
+          <tbody>
+            {% for u in users %}
+            <tr>
+              <td>
+                <div style="display:flex; align-items:center; gap:11px">
+                  <div class="review-av" style="width:32px; height:32px; font-size:0.7rem">{{ u.initials }}</div>
+                  <div>
+                    <div style="font-weight:600">{{ u.full_name }}</div>
+                    {% if u.is_admin %}<span class="admin-badge">Admin</span>{% endif %}
+                  </div>
+                </div>
+              </td>
+              <td>
+                <div style="font-size:0.82rem">{{ u.email }}</div>
+                {% if u.phone %}<div class="muted" style="font-size:0.76rem">{{ u.phone }}</div>{% endif %}
+              </td>
+              <td class="mono">{{ u.order_count }}</td>
+              <td class="mono">{{ u.total_spent|money }}</td>
+              <td class="muted" style="font-size:0.78rem">{{ u.created_at.strftime('%d %b %Y') }}</td>
+              <td>
+                {% if u.id == current_user.id %}
+                <span class="pill ok">You</span>
+                {% else %}
+                <form method="post" action="{{ url_for('admin.toggle_admin', user_id=u.id) }}">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                  <button class="mini-btn {{ 'danger' if u.is_admin else '' }}" type="submit">
+                    {{ 'Revoke admin' if u.is_admin else 'Make admin' }}
+                  </button>
+                </form>
+                {% endif %}
+              </td>
+            </tr>
+            {% else %}
+            <tr><td colspan="6" class="muted" style="text-align:center; padding:34px">No customers found.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

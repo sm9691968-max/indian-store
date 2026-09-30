@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+{% block title %}Audit log — Indian Store admin{% endblock %}
+
+{% block content %}
+<section class="page-head">
+  <div class="wrap">
+    <nav class="crumbs"><a href="{{ url_for('admin.dashboard') }}">Admin</a> / Audit log</nav>
+    <h1>Audit log</h1>
+    <p class="muted">Every privileged action, newest first. Last 300 entries shown.</p>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap">
+    <div class="panel">
+      <form method="get" class="filter-bar">
+        <input type="search" name="q" class="form-input sm" value="{{ search }}"
+               placeholder="Search detail, entity or email">
+        <select name="action" class="form-input sm">
+          <option value="">All actions</option>
+          {% for a in actions %}
+          <option value="{{ a }}" {% if a == action_filter %}selected{% endif %}>{{ a }}</option>
+          {% endfor %}
+        </select>
+        <button class="btn btn-secondary btn-sm" type="submit">Filter</button>
+        {% if search or action_filter %}
+        <a class="btn btn-ghost btn-sm" href="{{ url_for('admin.audit_log') }}">Reset</a>
+        {% endif %}
+      </form>
+
+      {% if not entries %}
+      <p class="muted pad">No audit entries match that filter.</p>
+      {% else %}
+      <table class="table">
+        <thead>
+          <tr><th>When</th><th>Actor</th><th>Action</th><th>Entity</th><th>Detail</th></tr>
+        </thead>
+        <tbody>
+          {% for e in entries %}
+          <tr>
+            <td class="muted nowrap">{{ e.created_at.strftime('%d %b %H:%M') }}</td>
+            <td>
+              {% if e.actor %}
+                <span class="link">{{ e.actor.full_name }}</span>
+                <div class="muted sm">{{ e.actor.email }}</div>
+              {% else %}
+                <span class="muted">system</span>
+              {% endif %}
+            </td>
+            <td><span class="tag tag-blue mono sm">{{ e.action }}</span></td>
+            <td class="mono sm">
+              {{ e.entity or '—' }}{% if e.entity_id %}<br><span class="muted">{{ e.entity_id }}</span>{% endif %}
+            </td>
+            <td class="muted">{{ e.detail or '—' }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% endif %}
+    </div>
+  </div>
+</section>
+{% endblock %}

@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+{% block title %}Your orders — Indian Store{% endblock %}
+
+{% block content %}
+<h1 class="section-title" style="margin-bottom:20px">
+  Order history
+  <span class="count-pill">{{ orders|length }}</span>
+</h1>
+
+<div class="chip-row">
+  <a class="chip {% if not status_filter %}active{% endif %}" href="{{ url_for('cart.orders') }}">All</a>
+  {% for slug, label in [('processing', 'Processing'), ('packed', 'Packed'), ('shipped', 'Shipped'), ('out-for-delivery', 'Out for delivery'), ('delivered', 'Delivered'), ('cancelled', 'Cancelled')] %}
+    {% set key = slug.replace('-', ' ')|title %}
+  <a class="chip {% if status_filter == key %}active{% endif %}"
+     href="{{ url_for('cart.orders', status=key) }}">
+    {{ label }}
+    {% if counts.get(key) %}<span class="n">{{ counts[key] }}</span>{% endif %}
+  </a>
+  {% endfor %}
+</div>
+
+{% if not orders %}
+<div class="panel empty">
+  <div class="ico">
+    <svg viewBox="0 0 24 24"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path><line x1="3" y1="6" x2="21" y2="6"></line><path d="M16 10a4 4 0 0 1-8 0"></path></svg>
+  </div>
+  <h3>No orders found</h3>
+  <p>When you place an order it will show up here with tracking details.</p>
+  <a class="btn-primary" href="{{ url_for('catalog.index') }}">Browse the store</a>
+</div>
+{% else %}
+{% for order in orders %}
+<div class="order-card fade-up">
+  <div class="order-head">
+    <div>
+      <a class="order-ref" href="{{ url_for('cart.order_detail', reference=order.reference) }}">{{ order.reference }}</a>
+      <div class="order-date">Placed {{ order.created_at.strftime('%d %b %Y, %H:%M') }} &middot; {{ order.payment_method }}</div>
+    </div>
+    <div style="display:flex; align-items:center; gap:14px; flex-wrap:wrap">
+      <span class="status-pill status-{{ order.status|lower|replace(' ', '-') }}">{{ order.status }}</span>
+      {% if order.tracking_number %}
+      <span class="pill mono">{{ order.tracking_number }}</span>
+      {% endif %}
+      <span style="font-family:var(--font-mono); font-weight:700">{{ order.total|money }}</span>
+    </div>
+  </div>
+
+  {# progress bar through the fulfilment flow #}
+  {% if order.status != 'Cancelled' %}
+  {% set idx = order.flow_index %}
+  <div style="display:flex; gap:4px; padding:12px 20px 0">
+    {% for step in ['Processing', 'Packed', 'Shipped', 'Out for delivery', 'Delivered'] %}
+    <div style="flex:1">
+      <div style="height:4px; border-radius:2px; background: {{ 'var(--accent-primary)' if loop.index0 <= idx else 'var(--border-subtle)' }}"></div>
+      <div style="font-size:0.64rem; margin-top:5px; color: {{ 'var(--text-primary)' if loop.index0 <= idx else 'var(--text-muted)' }}; font-weight: {{ '700' if loop.index0 == idx else '500' }}">
+        {{ step }}
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  <div class="order-items">
+    {% for item in order.items %}
+    <div class="order-item">
+      <div class="mini">
+        {% if item.product and item.product.image_url %}<img src="{{ item.product.image_url }}" alt="">
+        {% elif item.product and item.product.category %}{{ item.product.category.name[:1] }}
+        {% else %}&mdash;{% endif %}
+      </div>
+      <div>
+        {% if item.product %}
+        <a class="nm" href="{{ url_for('catalog.product_detail', slug=item.product.slug) }}">{{ item.product_name or item.product.name }}</a>
+        {% else %}
+        <span class="nm">{{ item.product_name }}</span>
+        {% endif %}
+        <div class="qt">Qty {{ item.quantity }} &times; {{ item.unit_price|money }}</div>
+      </div>
+      <div class="pr">{{ (item.unit_price|float * item.quantity)|money }}</div>
+    </div>
+    {% endfor %}
+  </div>
+
+  <div class="order-foot">
+    <span>
+      {{ order.shipping_name }} &middot; {{ order.shipping_city }} {{ order.shipping_postal }}
+      {% if order.discount > 0 %}<span style="color:var(--accent-emerald)"> &middot; saved {{ order.discount|money }} ({{ order.coupon_code }})</span>{% endif %}
+    </span>
+    <span style="display:flex; align-items:center; gap:16px">
+      {{ order.item_count }} item{{ '' if order.item_count == 1 else 's' }} &middot; <b>{{ order.total|money }}</b>
+      <a class="mini-btn go" href="{{ url_for('cart.order_detail', reference=order.reference) }}">Track</a>
+    </span>
+  </div>
+</div>
+{% endfor %}
+{% endif %}
+{% endblock %}

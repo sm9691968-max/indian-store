@@ -1,0 +1,228 @@
+{% extends "base.html" %}
+{% block title %}Indian Store — Next-Gen Marketplace{% endblock %}
+
+{% macro price_block(p) %}
+<span class="price-block">
+  {% if p.discount_pct %}<span class="pct-off">-{{ p.discount_pct }}%</span>{% endif %}
+  <span class="price">
+    {{ p.price|money }}
+    {% if p.compare_at and p.compare_at > p.price %}<small>{{ p.compare_at|money }}</small>{% endif %}
+  </span>
+</span>
+{% endmacro %}
+
+{% macro product_card(p) %}
+<article class="product-card fade-up">
+  <a class="product-thumb" href="{{ url_for('catalog.product_detail', slug=p.slug) }}">
+    {% if p.badge %}<span class="product-badge">{{ p.badge }}</span>{% endif %}
+    {% if p.stock == 0 %}<span class="out-chip">Sold out</span>
+    {% elif p.is_low_stock %}<span class="out-chip" style="background:rgba(245,158,11,0.92)">Only {{ p.stock }}</span>{% endif %}
+    {% if p.image_url %}
+      <img src="{{ p.image_url }}" alt="{{ p.name }}" loading="lazy">
+    {% else %}
+      <span class="thumb-glyph">{{ p.category.name[:1] if p.category else 'N' }}</span>
+    {% endif %}
+  </a>
+
+  {% if current_user %}
+  <form action="{{ url_for('catalog.toggle_wishlist', product_id=p.id) }}" method="post" data-wishlist>
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <button class="wish-btn {% if p.id in wish_ids %}on{% endif %}" title="Save to wishlist"
+            aria-label="Save {{ p.name }} to wishlist">
+      <svg viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
+    </button>
+  </form>
+  {% endif %}
+
+  <div class="product-body">
+    <span class="product-cat">{{ p.brand }} &middot; {{ p.category.name if p.category else 'General' }}</span>
+    <a class="product-name" href="{{ url_for('catalog.product_detail', slug=p.slug) }}">{{ p.name }}</a>
+    <p class="product-desc">{{ p.description }}</p>
+    <div class="rating-row">
+      <span class="stars">{{ p.rating|stars }}</span>
+      <span class="rc">{{ '%.1f'|format(p.rating) }} ({{ p.review_count }})</span>
+      {% if p.sold_count %}<span class="rc">&middot; {{ p.sold_count }} sold</span>{% endif %}
+    </div>
+    <div class="product-foot">
+      {{ price_block(p) }}
+      {% if current_user %}
+      <form action="{{ url_for('cart.add', product_id=p.id) }}" method="post">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="quantity" value="1">
+        <button class="add-btn" type="submit" title="Add to cart" {% if p.stock == 0 %}disabled{% endif %}>
+          <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+        </button>
+      </form>
+      {% else %}
+      <a class="add-btn" href="{{ url_for('auth.login') }}" title="Sign in to buy">
+        <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+      </a>
+      {% endif %}
+    </div>
+  </div>
+</article>
+{% endmacro %}
+
+{% block content %}
+<section class="hero fade-up">
+  <h1>Hardware for people who<br><em>build the future</em>.</h1>
+  <p>Indian Store is a curated marketplace for high-performance components, dev rigs and peripherals — vetted by engineers, shipped overnight.</p>
+  <div class="hero-stats">
+    <div class="hero-stat"><div class="v">12,480+</div><div class="k">Orders shipped</div></div>
+    <div class="hero-stat"><div class="v">4.8/5</div><div class="k">Buyer rating</div></div>
+    <div class="hero-stat"><div class="v">24h</div><div class="k">Dispatch window</div></div>
+    <div class="hero-stat"><div class="v">30d</div><div class="k">Free returns</div></div>
+  </div>
+</section>
+
+<div class="catalog-layout">
+  {# ---------------- Filters ---------------- #}
+  <aside>
+    <form class="panel filter-panel" method="get" action="{{ url_for('catalog.index') }}" data-autofilter>
+      {% if filters.q %}<input type="hidden" name="q" value="{{ filters.q }}">{% endif %}
+      <input type="hidden" name="sort" value="{{ filters.sort }}">
+
+      <div class="filter-group">
+        <h4>Category</h4>
+        <div class="radio-list">
+          <a class="{% if not filters.category %}active{% endif %}"
+             href="{{ url_for('catalog.index', q=filters.q or None, sort=filters.sort, price=filters.price or None, brand=filters.brand or None) }}">
+            All products
+          </a>
+          {% for c in categories %}
+          <a class="{% if filters.category == c.slug %}active{% endif %}"
+             href="{{ url_for('catalog.index', category=c.slug, q=filters.q or None, sort=filters.sort, price=filters.price or None, brand=filters.brand or None) }}">
+            <span class="dot" style="width:8px;height:8px;border-radius:50%;background:{{ c.accent }}"></span>
+            {{ c.name }}
+            <span class="n">{{ c.product_count }}</span>
+          </a>
+          {% endfor %}
+        </div>
+      </div>
+
+      <div class="filter-group">
+        <h4>Price</h4>
+        <div class="radio-list">
+          <a class="{% if not filters.price %}active{% endif %}"
+             href="{{ url_for('catalog.index', category=filters.category or None, q=filters.q or None, sort=filters.sort, brand=filters.brand or None) }}">Any price</a>
+          {% for key, label, _, _ in price_bands %}
+          <a class="{% if filters.price == key %}active{% endif %}"
+             href="{{ url_for('catalog.index', category=filters.category or None, q=filters.q or None, sort=filters.sort, price=key, brand=filters.brand or None) }}">
+            {{ label }}
+          </a>
+          {% endfor %}
+        </div>
+      </div>
+
+      {% if brands %}
+      <div class="filter-group">
+        <h4>Brand</h4>
+        <div class="radio-list">
+          <a class="{% if not filters.brand %}active{% endif %}"
+             href="{{ url_for('catalog.index', category=filters.category or None, q=filters.q or None, sort=filters.sort, price=filters.price or None) }}">All brands</a>
+          {% for b in brands %}
+          <a class="{% if filters.brand == b %}active{% endif %}"
+             href="{{ url_for('catalog.index', category=filters.category or None, q=filters.q or None, sort=filters.sort, price=filters.price or None, brand=b) }}">
+            {{ b }}
+          </a>
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}
+
+      <div class="filter-group">
+        <h4>Minimum rating</h4>
+        <div class="radio-list">
+          {% for value in [0, 3, 4, 4.5] %}
+          <a class="{% if filters.rating|int == value|int %}active{% endif %}"
+             href="{{ url_for('catalog.index', category=filters.category or None, q=filters.q or None, sort=filters.sort, price=filters.price or None, brand=filters.brand or None, rating=value if value else None) }}">
+            {% if value == 0 %}Any rating{% else %}{{ value }}&#9733; &amp; up{% endif %}
+          </a>
+          {% endfor %}
+        </div>
+      </div>
+
+      <div class="filter-group">
+        <h4>Availability</h4>
+        <label class="filter-opt">
+          <input type="checkbox" name="stock" value="1" {% if filters.stock %}checked{% endif %}>
+          In stock only
+        </label>
+      </div>
+
+      {% if filters.q or filters.category or filters.price or filters.brand or filters.rating or filters.stock %}
+      <a class="filter-reset" href="{{ url_for('catalog.index') }}">Clear all filters</a>
+      {% endif %}
+    </form>
+  </aside>
+
+  {# ---------------- Results ---------------- #}
+  <div>
+    <div class="toolbar">
+      <div>
+        <h2 class="section-title">
+          {% if filters.q %}Results for &ldquo;{{ filters.q }}&rdquo;{% elif filters.category %}{{ filters.category|title }}{% else %}Featured gear{% endif %}
+          <span class="count-pill">{{ total }}</span>
+        </h2>
+      </div>
+      <form method="get" action="{{ url_for('catalog.index') }}">
+        {% if filters.q %}<input type="hidden" name="q" value="{{ filters.q }}">{% endif %}
+        {% if filters.category %}<input type="hidden" name="category" value="{{ filters.category }}">{% endif %}
+        {% if filters.price %}<input type="hidden" name="price" value="{{ filters.price }}">{% endif %}
+        {% if filters.brand %}<input type="hidden" name="brand" value="{{ filters.brand }}">{% endif %}
+        {% if filters.rating %}<input type="hidden" name="rating" value="{{ filters.rating }}">{% endif %}
+        {% if filters.stock %}<input type="hidden" name="stock" value="1">{% endif %}
+        <select class="select" name="sort" onchange="this.form.submit()">
+          <option value="featured" {% if filters.sort == 'featured' %}selected{% endif %}>Sort: Featured</option>
+          <option value="popular" {% if filters.sort == 'popular' %}selected{% endif %}>Sort: Best selling</option>
+          <option value="newest" {% if filters.sort == 'newest' %}selected{% endif %}>Sort: Newest</option>
+          <option value="price_asc" {% if filters.sort == 'price_asc' %}selected{% endif %}>Sort: Price low to high</option>
+          <option value="price_desc" {% if filters.sort == 'price_desc' %}selected{% endif %}>Sort: Price high to low</option>
+          <option value="rating" {% if filters.sort == 'rating' %}selected{% endif %}>Sort: Top rated</option>
+          <option value="name" {% if filters.sort == 'name' %}selected{% endif %}>Sort: Name A-Z</option>
+        </select>
+      </form>
+    </div>
+
+    {% if products %}
+    <div class="product-grid">
+      {% for p in products %}{{ product_card(p) }}{% endfor %}
+    </div>
+
+    {% if pages > 1 %}
+    <nav class="pagination" aria-label="Pagination">
+      {% if page > 1 %}
+      <a href="{{ url_for('catalog.index', page=page-1, **filters) }}">&larr; Prev</a>
+      {% else %}
+      <span class="disabled">&larr; Prev</span>
+      {% endif %}
+
+      {% for n in range(1, pages + 1) %}
+        {% if n == page %}<span class="current">{{ n }}</span>
+        {% elif n <= 2 or n > pages - 2 or (n >= page - 1 and n <= page + 1) %}
+          <a href="{{ url_for('catalog.index', page=n, **filters) }}">{{ n }}</a>
+        {% elif n == 3 or n == pages - 2 %}<span class="gap">&hellip;</span>
+        {% endif %}
+      {% endfor %}
+
+      {% if page < pages %}
+      <a href="{{ url_for('catalog.index', page=page+1, **filters) }}">Next &rarr;</a>
+      {% else %}
+      <span class="disabled">Next &rarr;</span>
+      {% endif %}
+    </nav>
+    {% endif %}
+
+    {% else %}
+    <div class="panel empty">
+      <div class="ico">
+        <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+      </div>
+      <h3>Nothing matches that</h3>
+      <p>Try a different keyword or clear the category filter.</p>
+      <a class="btn-primary" href="{{ url_for('catalog.index') }}">Browse everything</a>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

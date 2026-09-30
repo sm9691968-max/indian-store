@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block title %}Recently viewed — Indian Store{% endblock %}
+
+{% block content %}
+<section class="page-head">
+  <div class="wrap">
+    <nav class="crumbs"><a href="{{ url_for('catalog.index') }}">Home</a> / Recently viewed</nav>
+    <h1>Recently viewed</h1>
+    <p class="muted">The last {{ total }} products you looked at on this device.</p>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap">
+    {% if not products %}
+    <div class="empty-state">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="empty-icon">
+        <circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>
+      </svg>
+      <h2>No history yet</h2>
+      <p>Products you open will appear here so you can pick up where you left off.</p>
+      <a class="btn btn-primary" href="{{ url_for('catalog.index') }}">Start browsing</a>
+    </div>
+    {% else %}
+    <div class="grid grid-products">
+      {% for p in products %}
+      <a class="card product-card" href="{{ url_for('catalog.product_detail', slug=p.slug) }}">
+        <div class="product-media">
+          <img src="{{ p.image }}" alt="{{ p.name }}" loading="lazy">
+          {% if p.badge %}<span class="badge">{{ p.badge }}</span>{% endif %}
+        </div>
+        <div class="product-body">
+          <div class="brand-chip">{{ p.brand }}</div>
+          <h3>{{ p.name }}</h3>
+          <div class="rate"><span class="stars">{{ p.rating|stars }}</span><span class="muted sm">({{ p.review_count }})</span></div>
+          <div class="price">{{ p.price|money }}</div>
+        </div>
+      </a>
+      {% endfor %}
+    </div>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}

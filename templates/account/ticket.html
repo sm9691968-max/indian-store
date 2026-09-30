@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% block title %}{{ ticket.subject }} — Indian Store support{% endblock %}
+
+{% block content %}
+<section class="page-head">
+  <div class="wrap narrow">
+    <nav class="crumbs">
+      <a href="{{ url_for('account.support') }}">Support</a> / {{ ticket.reference }}
+    </nav>
+    <div class="page-head-row">
+      <div>
+        <h1>{{ ticket.subject }}</h1>
+        <p class="muted">
+          <span class="mono">{{ ticket.reference }}</span> · {{ ticket.category }} ·
+          opened {{ ticket.created_at|ts }} · priority {{ ticket.priority }}
+        </p>
+      </div>
+      <span class="tag tag-lg {{ 'tag-green' if ticket.status == 'resolved' else ('tag-slate' if ticket.status == 'closed' else 'tag-blue') }}">{{ ticket.status }}</span>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap narrow">
+    {% if ticket.order %}
+    <div class="panel slim">
+      <div class="panel-head">
+        <h3>Related order</h3>
+        <a class="link sm" href="{{ url_for('cart.order_detail', reference=ticket.order.reference) }}">{{ ticket.order.reference }} →</a>
+      </div>
+      <dl class="spec-list compact">
+        <div><dt>Status</dt><dd>{{ ticket.order.status }}</dd></div>
+        <div><dt>Total</dt><dd>{{ ticket.order.total|money }}</dd></div>
+        <div><dt>Placed</dt><dd>{{ ticket.order.created_at.strftime('%d %b %Y') }}</dd></div>
+      </dl>
+    </div>
+    {% endif %}
+
+    <div class="panel">
+      <h3>Conversation</h3>
+      <div class="thread">
+        {% for m in ticket.messages %}
+        <article class="msg {{ 'from-staff' if m.author and m.author.is_admin else 'from-user' }}">
+          <div class="msg-head">
+            <strong>{{ m.author.full_name if m.author else 'Indian Store' }}</strong>
+            <span class="muted sm">{{ m.created_at|ts }}</span>
+          </div>
+          <div class="msg-body">{{ m.body }}</div>
+        </article>
+        {% endfor %}
+      </div>
+
+      {% if ticket.status != 'closed' %}
+      <form method="post" action="{{ url_for('account.reply_ticket', ticket_id=ticket.id) }}" class="stack mt-lg">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <label class="form-label" for="message">Reply</label>
+        <textarea id="message" name="message" class="form-input" rows="4" required placeholder="Add more detail or answer a question…"></textarea>
+        <div class="action-row">
+          <button class="btn btn-primary" type="submit">Send reply</button>
+        </div>
+      </form>
+      {% else %}
+      <p class="muted mt">This ticket is closed. Open a new ticket if you need more help.</p>
+      {% endif %}
+    </div>
+
+    {% if ticket.status != 'closed' %}
+    <form method="post" action="{{ url_for('account.close_ticket', ticket_id=ticket.id) }}" class="mt">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <button class="btn btn-ghost btn-sm" type="submit">Mark this ticket resolved</button>
+    </form>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}

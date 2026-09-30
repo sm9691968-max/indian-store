@@ -1,0 +1,32 @@
+{% macro nav(active) %}
+<div class="side-nav">
+  <a class="{% if active == 'dashboard' %}active{% endif %}" href="{{ url_for('admin.dashboard') }}">
+    <svg viewBox="0 0 24 24"><path d="M3 3h7v9H3zM14 3h7v5h-7zM14 12h7v9h-7zM3 16h7v5H3z"></path></svg>
+    Dashboard
+  </a>
+  <a class="{% if active == 'products' %}active{% endif %}" href="{{ url_for('admin.products') }}">
+    <svg viewBox="0 0 24 24"><path d="M21 16V8l-9-5-9 5v8l9 5 9-5z"></path><path d="M3.3 7.3 12 12l8.7-4.7M12 22V12"></path></svg>
+    Products
+  </a>
+  <a class="{% if active == 'orders' %}active{% endif %}" href="{{ url_for('admin.orders') }}">
+    <svg viewBox="0 0 24 24"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path><line x1="3" y1="6" x2="21" y2="6"></line></svg>
+    Orders
+  </a>
+  <a class="{% if active == 'coupons' %}active{% endif %}" href="{{ url_for('admin.coupons') }}">
+    <svg viewBox="0 0 24 24"><path d="M3 8a2 2 0 0 0 0 8l4 0 10 5V3L7 8H3z"></path><path d="M19 9a4 4 0 0 1 0 6"></path></svg>
+    Coupons
+  </a>
+  <a class="{% if active == 'users' %}active{% endif %}" href="{{ url_for('admin.users') }}">
+    <svg viewBox="0 0 24 24"><circle cx="9" cy="7" r="4"></circle><path d="M2 21a8 8 0 0 1 14 0"></path><path d="M17 3.5a4 4 0 0 1 0 7"></path><path d="M18 14a6 6 0 0 1 4 7"></path></svg>
+    Customers
+  </a>
+  <a class="{% if active == 'reviews' %}active{% endif %}" href="{{ url_for('admin.reviews') }}">
+    <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+    Reviews
+  </a>
+  <a href="{{ url_for('admin.dashboard') }}">
+    <svg viewBox="0 0 24 24"><path d="M19 12H5M12 19V5"></path></svg>
+    Back to store
+  </a>
+</div>
+{% endmacro %}

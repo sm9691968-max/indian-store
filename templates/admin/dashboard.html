@@ -1,0 +1,128 @@
+﻿{% extends "base.html" %}
+{% from "admin/_nav.html" import nav with context %}
+{% block title %}Admin dashboard — Indian Store{% endblock %}
+
+{% block content %}
+<div class="admin-layout">
+  {{ nav('dashboard') }}
+
+  <div>
+    <div class="admin-head">
+      <div>
+        <h1 class="section-title" style="margin-bottom:4px">Dashboard</h1>
+        <p class="muted" style="font-size:0.82rem">Live snapshot of the store.</p>
+      </div>
+      <a class="btn-primary" href="{{ url_for('admin.products') }}" style="height:42px">Add product</a>
+    </div>
+
+    <div class="stat-grid" style="margin-bottom:16px">
+      <div class="stat-card">
+        <div class="v">{{ revenue|money }}</div>
+        <div class="k">Revenue</div>
+        <div class="sub">Excludes cancelled orders</div>
+      </div>
+      <div class="stat-card">
+        <div class="v">{{ order_count }}</div>
+        <div class="k">Orders</div>
+        <div class="sub">{{ per_status.get('Delivered', 0) }} delivered</div>
+      </div>
+      <div class="stat-card">
+        <div class="v">{{ product_count }}</div>
+        <div class="k">Active products</div>
+        <div class="sub">{{ low_stock|length }} low on stock</div>
+      </div>
+      <div class="stat-card">
+        <div class="v">{{ user_count }}</div>
+        <div class="k">Registered customers</div>
+      </div>
+    </div>
+
+    <div class="panel" style="margin-bottom:16px">
+      <h2 style="font-size:1.02rem; font-weight:800; margin-bottom:14px">Orders by status</h2>
+      <div class="chart-bars">
+        {% for status, count in per_status.items() %}
+        <div class="chart-col">
+          <div class="bar-wrap">
+            <div class="bar-fill {{ 'warn' if status == 'Cancelled' }}"
+                 style="height: {{ (count / (order_count or 1) * 100)|round(0, 'floor')|int }}%"></div>
+          </div>
+          <span class="n">{{ count }}</span>
+          <span class="lbl">{{ status_slug.get(status, status|lower|replace(' ', '-')) }}</span>
+        </div>
+        {% else %}
+        <p class="muted" style="font-size:0.85rem">No orders yet.</p>
+        {% endfor %}
+      </div>
+    </div>
+
+    <div class="admin-grid-2">
+      <div class="panel">
+        <h2 style="font-size:1.02rem; font-weight:800; margin-bottom:14px">Low stock alerts</h2>
+        {% if low_stock %}
+          {% for p in low_stock %}
+          <div class="order-item" style="padding:9px 0">
+            <div class="mini">
+              {% if p.image_url %}<img src="{{ p.image_url }}" alt="">
+              {% else %}{{ p.category.name[:1] if p.category else 'N' }}{% endif %}
+            </div>
+            <div>
+              <a class="nm" href="{{ url_for('admin.edit_product', product_id=p.id) }}">{{ p.name }}</a>
+              <div class="qt">{{ p.sku or 'No SKU' }} &middot; {{ p.price|money }}</div>
+            </div>
+            <span class="pill {{ 'bad' if p.stock == 0 else 'warn' }}" style="margin-left:auto">
+              {{ p.stock }} left
+            </span>
+          </div>
+          {% endfor %}
+        {% else %}
+        <p class="muted" style="font-size:0.85rem">Every product is comfortably stocked.</p>
+        {% endif %}
+      </div>
+
+      <div class="panel">
+        <h2 style="font-size:1.02rem; font-weight:800; margin-bottom:14px">Top sellers</h2>
+        {% if top_products %}
+          {% for name, units, rev in top_products %}
+          <div class="order-item" style="padding:9px 0">
+            <div>
+              <div class="nm">{{ name }}</div>
+              <div class="qt">{{ units }} units sold</div>
+            </div>
+            <span class="pr" style="margin-left:auto">{{ rev|money }}</span>
+          </div>
+          {% endfor %}
+        {% else %}
+        <p class="muted" style="font-size:0.85rem">No sales recorded yet.</p>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="toolbar" style="margin-bottom:14px">
+        <h2 style="font-size:1.02rem; font-weight:800">Recent orders</h2>
+        <a class="mini-btn" href="{{ url_for('admin.orders') }}">Manage all</a>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>Reference</th><th>Customer</th><th>Status</th><th>Total</th><th>Placed</th></tr>
+          </thead>
+          <tbody>
+            {% for o in recent_orders %}
+            <tr>
+              <td class="mono">{{ o.reference }}</td>
+              <td>{{ o.shipping_name }}<br><span class="muted" style="font-size:0.76rem">{{ o.shipping_city }}</span></td>
+              <td><span class="status-pill status-{{ status_slug.get(o.status, o.status|lower|replace(' ', '-')) }}">{{ o.status }}</span></td>
+              <td class="mono">{{ o.total|money }}</td>
+              <td class="muted" style="font-size:0.78rem">{{ o.created_at.strftime('%d %b, %H:%M') }}</td>
+            </tr>
+            {% else %}
+            <tr><td colspan="5" class="muted" style="text-align:center; padding:30px">No orders yet.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

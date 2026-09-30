@@ -1,0 +1,112 @@
+{% extends "base.html" %}
+{% block title %}Two-factor authentication — Indian Store{% endblock %}
+
+{% block content %}
+<section class="page-head">
+  <div class="wrap">
+    <nav class="crumbs"><a href="{{ url_for('account.overview') }}">Account</a> / Security</nav>
+    <h1>Two-factor authentication</h1>
+    <p class="muted">Add a time-based one-time password (TOTP) as a second lock on your account.</p>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap narrow">
+    {% if user.totp_enabled %}
+    <div class="panel">
+      <div class="status-pill status-ok">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5"/></svg>
+        Two-factor authentication is active
+      </div>
+
+      <dl class="spec-list mt">
+        <div><dt>Method</dt><dd>Authenticator app (TOTP, SHA-1, 6 digits, 30s)</dd></div>
+        <div><dt>Enrolled</dt><dd>{{ user.totp_enrolled_at|ts if user.totp_enrolled_at else '—' }}</dd></div>
+        <div><dt>Last sign-in</dt><dd>{{ user.last_login_at|ts if user.last_login_at else '—' }}</dd></div>
+        <div><dt>Recovery codes left</dt><dd>{{ user.recovery_codes.split(',')|length if user.recovery_codes else 0 }} of 8 unused</dd></div>
+      </dl>
+
+      <h3 class="mt-lg">Recovery codes</h3>
+      <p class="muted">Each code works once if you lose your device. Store them somewhere safe and private.</p>
+      <div class="code-grid mono">
+        {% for code in user.recovery_codes.split(',') if code %}
+        <span class="recovery-code">{{ code }}</span>
+        {% endfor %}
+      </div>
+      <button class="btn btn-ghost btn-sm mt" type="button" onclick="copyRecovery()">Copy codes</button>
+
+      <div class="action-row mt-lg">
+        <form method="post" action="{{ url_for('account.two_factor') }}" class="danger-form">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <input type="hidden" name="action" value="regenerate">
+          <input type="password" name="password" class="form-input sm" placeholder="Confirm password" required
+                 autocomplete="current-password">
+          <button class="btn btn-secondary" type="submit">Generate new codes</button>
+        </form>
+        <form method="post" action="{{ url_for('account.two_factor') }}" class="danger-form">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <input type="hidden" name="action" value="disable">
+          <input type="password" name="password" class="form-input sm" placeholder="Confirm password" required
+                 autocomplete="current-password">
+          <button class="btn btn-danger" type="submit">Turn off 2FA</button>
+        </form>
+      </div>
+      <p class="muted sm mt">
+        Reissuing recovery codes invalidates the codes shown above, so copy the new set before closing this page.
+      </p>
+    </div>
+    {% else %}
+    <div class="panel">
+      <h2>Set up your authenticator</h2>
+      <ol class="steps">
+        <li>Open Google Authenticator, 1Password, Authy or any TOTP app.</li>
+        <li>Add a new entry and enter the secret key below by hand, or paste the setup URI.</li>
+        <li>Enter the 6-digit code the app shows to finish enrolment.</li>
+      </ol>
+
+      <div class="enrol-grid">
+        <div>
+          <label class="form-label">Secret key</label>
+          <div class="secret-box">
+            <code class="mono">{{ secret }}</code>
+            <button class="btn btn-ghost btn-sm" type="button" onclick="copySecret('{{ secret }}')">Copy</button>
+          </div>
+
+          <label class="form-label mt">Setup URI</label>
+          <textarea class="form-input mono sm" rows="3" readonly>{{ uri }}</textarea>
+
+          <details class="mt">
+            <summary>Prefer to scan a QR code?</summary>
+            <p class="muted sm">
+              Most TOTP apps accept a pasted setup URI under "Enter manually". Copy the URI above
+              into your app, or type the secret key by hand — both enrol identically.
+            </p>
+          </details>
+        </div>
+
+        <form method="post" action="{{ url_for('account.two_factor') }}" class="enrol-form">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <input type="hidden" name="action" value="enable">
+          <input type="hidden" name="secret" value="{{ secret }}">
+          <label class="form-label" for="totp">Enter the current 6-digit code</label>
+          <input type="text" id="totp" name="code" class="form-input code-input" inputmode="numeric"
+                 maxlength="6" placeholder="000000" required autocomplete="one-time-code">
+          <p class="muted sm">Codes refresh every 30 seconds, so enter the current one.</p>
+          <button class="btn btn-primary btn-block" type="submit">Verify and activate 2FA</button>
+        </form>
+      </div>
+    </div>
+    {% endif %}
+
+    <div class="panel">
+      <h3>How this works</h3>
+      <ul class="bullets">
+        <li>Your secret never leaves this server in plain text over the network — it is stored in the database and only used to derive codes.</li>
+        <li>Sign-in still asks for your password first, then the rotating code.</li>
+        <li>A recovery code can substitute for the app exactly once.</li>
+        <li>Disabling 2FA requires your password again, so a hijacked session cannot silently remove it.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+{% endblock %}

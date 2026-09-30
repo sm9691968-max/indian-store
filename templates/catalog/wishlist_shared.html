@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block title %}{{ owner.full_name }}'s wishlist — Indian Store{% endblock %}
+
+{% block content %}
+<section class="page-head">
+  <div class="wrap">
+    <nav class="crumbs"><a href="{{ url_for('catalog.index') }}">Home</a> / Shared wishlist</nav>
+    <h1>{{ owner.full_name }}'s wishlist</h1>
+    <p class="muted">{{ total }} saved item{{ '' if total == 1 else 's' }} · read-only share link</p>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap">
+    {% if not products %}
+    <div class="empty-state">
+      <h2>This wishlist is empty</h2>
+      <p>Nothing has been saved to it yet.</p>
+    </div>
+    {% else %}
+    <div class="grid grid-products">
+      {% for p in products %}
+      <a class="card product-card" href="{{ url_for('catalog.product_detail', slug=p.slug) }}">
+        <div class="product-media">
+          <img src="{{ p.image }}" alt="{{ p.name }}" loading="lazy">
+          {% if p.badge %}<span class="badge">{{ p.badge }}</span>{% endif %}
+        </div>
+        <div class="product-body">
+          <div class="brand-chip">{{ p.brand }}</div>
+          <h3>{{ p.name }}</h3>
+          <div class="rate"><span class="stars">{{ p.rating|stars }}</span><span class="muted sm">({{ p.review_count }})</span></div>
+          <div class="price">{{ p.price|money }}</div>
+          <span class="card-cta">View product →</span>
+        </div>
+      </a>
+      {% endfor %}
+    </div>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}

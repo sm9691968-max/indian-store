@@ -1,0 +1,123 @@
+{% extends "base.html" %}
+{% block title %}Analytics — Indian Store admin{% endblock %}
+
+{% block content %}
+<section class="page-head">
+  <div class="wrap">
+    <nav class="crumbs"><a href="{{ url_for('admin.dashboard') }}">Admin</a> / Analytics</nav>
+    <div class="page-head-row">
+      <div>
+        <h1>Sales analytics</h1>
+        <p class="muted">Last {{ days }} days, cancelled orders excluded.</p>
+      </div>
+      <div class="action-row">
+        <form method="get" class="inline-form">
+          <select name="days" class="form-input sm" onchange="this.form.submit()">
+            {% for d in [7, 14, 30, 90, 180, 365] %}
+            <option value="{{ d }}" {% if d == days %}selected{% endif %}>{{ d }} days</option>
+            {% endfor %}
+          </select>
+        </form>
+        <a class="btn btn-secondary" href="{{ url_for('admin.export_orders_csv') }}">Orders CSV</a>
+        <a class="btn btn-secondary" href="{{ url_for('admin.export_products_csv') }}">Products CSV</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap">
+    <div class="stat-grid four">
+      <div class="stat"><span class="stat-label">Revenue</span><span class="stat-value">{{ revenue|usd }}</span></div>
+      <div class="stat"><span class="stat-label">Orders</span><span class="stat-value">{{ orders }}</span></div>
+      <div class="stat"><span class="stat-label">Units sold</span><span class="stat-value">{{ units }}</span></div>
+      <div class="stat"><span class="stat-label">Repeat buyers</span><span class="stat-value">{{ repeat_rate|round(1) }}%</span></div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head">
+        <h2>Daily revenue</h2>
+        <span class="muted sm">Peak {{ peak|usd }}</span>
+      </div>
+      {% if orders == 0 %}
+      <p class="muted pad">No orders in this window yet.</p>
+      {% else %}
+      <div class="chart" role="img" aria-label="Daily revenue over the last {{ days }} days">
+        {% for b in series %}
+        <div class="chart-col" title="{{ b.day }} — {{ b.revenue|usd }} across {{ b.orders }} order(s)">
+          <div class="chart-bar-wrap">
+            <div class="chart-bar" style="height: {{ (b.revenue / peak * 100)|round(2) if peak else 0 }}%"></div>
+          </div>
+          <span class="chart-label">{% if loop.index0 % 7 == 0 or loop.last %}{{ b.day[5:] }}{% endif %}</span>
+        </div>
+        {% endfor %}
+      </div>
+      {% endif %}
+    </div>
+
+    <div class="two-col">
+      <div class="panel">
+        <h2>Revenue by category</h2>
+        {% if not by_category %}
+        <p class="muted pad">No sales to break down yet.</p>
+        {% else %}
+        <table class="table">
+          <thead><tr><th>Category</th><th class="num">Revenue</th><th class="num">Share</th></tr></thead>
+          <tbody>
+            {% for name, amount in by_category %}
+            <tr>
+              <td>{{ name }}</td>
+              <td class="num">{{ amount|usd }}</td>
+              <td class="num">{{ amount|pct_of(revenue) }}%</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        {% endif %}
+      </div>
+
+      <div class="panel">
+        <h2>Payment methods</h2>
+        {% if not by_source %}
+        <p class="muted pad">No orders in this window.</p>
+        {% else %}
+        <table class="table">
+          <thead><tr><th>Method</th><th class="num">Orders</th><th class="num">Value</th></tr></thead>
+          <tbody>
+            {% for method, count, value in by_source %}
+            <tr>
+              <td>{{ method or 'Unspecified' }}</td>
+              <td class="num">{{ count }}</td>
+              <td class="num">{{ value|usd }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        {% endif %}
+        <p class="muted sm pad">Product views recorded: {{ '{:,}'.format(views) }}</p>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>Top products</h2>
+      {% if not top_products %}
+      <p class="muted pad">No products sold in this window.</p>
+      {% else %}
+      <table class="table">
+        <thead><tr><th>Product</th><th class="num">Units</th><th class="num">Revenue</th><th class="num">Share</th></tr></thead>
+        <tbody>
+          {% for name, amount, units in top_products %}
+          <tr>
+            <td>{{ name }}</td>
+            <td class="num">{{ units }}</td>
+            <td class="num">{{ amount|usd }}</td>
+            <td class="num">{{ amount|pct_of(revenue) }}%</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% endif %}
+    </div>
+  </div>
+</section>
+{% endblock %}

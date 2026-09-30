@@ -1,0 +1,125 @@
+﻿{% extends "base.html" %}
+{% from "admin/_nav.html" import nav with context %}
+{% block title %}Coupons — Indian Store Admin{% endblock %}
+
+{% block content %}
+<div class="admin-layout">
+  {{ nav('coupons') }}
+
+  <div>
+    <div class="admin-head">
+      <div>
+        <h1 class="section-title" style="margin-bottom:4px">Coupons</h1>
+        <p class="muted" style="font-size:0.82rem">Promo codes customers can apply in the cart.</p>
+      </div>
+    </div>
+
+    <div class="admin-grid-2" style="align-items:start; margin-bottom:16px">
+      <div class="panel">
+        <h2 style="font-size:1.02rem; font-weight:800; margin-bottom:14px">Create a coupon</h2>
+        <form method="post" action="{{ url_for('admin.coupons') }}">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <div class="form-grid">
+            <div class="field">
+              <label for="code">Code</label>
+              <input type="text" id="code" name="code" required maxlength="24" placeholder="LAUNCH20" style="text-transform:uppercase">
+            </div>
+            <div class="field">
+              <label for="kind">Type</label>
+              <select id="kind" name="kind">
+                <option value="percent">Percentage off</option>
+                <option value="fixed">Fixed amount off</option>
+                <option value="freeship">Free shipping</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="value">Value</label>
+              <input type="number" id="value" name="value" step="0.01" min="0" value="10">
+              <p class="help-text">Percent (1-100) or dollars. Ignored for free shipping.</p>
+            </div>
+            <div class="field">
+              <label for="min_subtotal">Minimum subtotal</label>
+              <input type="number" id="min_subtotal" name="min_subtotal" step="0.01" min="0" value="0">
+            </div>
+            <div class="field full">
+              <label for="description">Customer-facing label</label>
+              <input type="text" id="description" name="description" maxlength="160" placeholder="20% off your first order">
+            </div>
+            <div class="field">
+              <label for="max_uses">Usage limit</label>
+              <input type="number" id="max_uses" name="max_uses" min="0" value="0">
+              <p class="help-text">0 means unlimited.</p>
+            </div>
+          </div>
+          <label class="switch-row" style="margin-bottom:18px">
+            <div>
+              <div class="t">Active</div>
+              <div class="s">Paused codes cannot be applied.</div>
+            </div>
+            <span class="toggle">
+              <input type="checkbox" name="is_active" value="1" checked>
+              <span class="track"></span>
+            </span>
+          </label>
+          <button class="btn-primary" type="submit">Create coupon</button>
+        </form>
+      </div>
+
+      <div class="panel">
+        <h2 style="font-size:1.02rem; font-weight:800; margin-bottom:12px">How discounts work</h2>
+        <ul class="help-list">
+          <li>Only one coupon applies per order; the best eligible code is always chosen by the customer.</li>
+          <li>Free-shipping coupons zero the shipping fee but never the tax.</li>
+          <li>Discounts apply to the merchandise subtotal, before shipping and tax.</li>
+          <li>Orders can be cancelled while they are still processing — stock returns automatically.</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>Code</th><th>Type</th><th>Value</th><th>Conditions</th><th>Used</th><th>State</th><th>Actions</th></tr>
+          </thead>
+          <tbody>
+            {% for c in coupons %}
+            <tr>
+              <td>
+                <div class="coupon-tag">{{ c.code }}</div>
+                {% if c.label %}<div class="muted" style="font-size:0.74rem; margin-top:4px">{{ c.label }}</div>{% endif %}
+              </td>
+              <td class="muted" style="font-size:0.8rem">{{ c.kind }}</td>
+              <td class="mono">
+                {{ 'Free shipping' if c.kind == 'freeship' else ('%s%%'|format(c.value|float|int) if c.kind == 'percent' else c.value|money) }}
+              </td>
+              <td class="muted" style="font-size:0.78rem">
+                {% if c.min_subtotal > 0 %}Min {{ c.min_subtotal|money }}{% else %}No minimum{% endif %}
+                {% if c.expires_at %}<br>Ends {{ c.expires_at.strftime('%d %b %Y') }}{% endif %}
+              </td>
+              <td class="mono">{{ c.used_count }}{% if c.max_uses %} / {{ c.max_uses }}{% endif %}</td>
+              <td><span class="pill {{ 'ok' if c.is_active else 'muted' }}">{{ 'Active' if c.is_active else 'Paused' }}</span></td>
+              <td>
+                <div class="row-actions">
+                  <form method="post" action="{{ url_for('admin.toggle_coupon', coupon_id=c.id) }}" style="display:inline">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button class="mini-btn" type="submit">{{ 'Pause' if c.is_active else 'Activate' }}</button>
+                  </form>
+                  <form method="post" action="{{ url_for('admin.delete_coupon', coupon_id=c.id) }}"
+                        data-confirm="Delete coupon {{ c.code }}?">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button class="mini-btn danger" type="submit">Delete</button>
+                  </form>
+                </div>
+              </td>
+            </tr>
+            {% else %}
+            <tr><td colspan="7" class="muted" style="text-align:center; padding:34px">No coupons yet.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,62 @@
+﻿{% extends "base.html" %}
+{% from "account/_nav.html" import nav with context %}
+{% block title %}Activity — Indian Store{% endblock %}
+
+{% block content %}
+<div class="account-layout">
+  {{ nav('activity') }}
+
+  <div style="display:grid; gap:16px; align-content:start">
+    <div class="panel panel-lg">
+      <h1 class="section-title" style="margin-bottom:20px">Order activity</h1>
+
+      {% if order_events %}
+      <div class="timeline">
+        {% for ref, status, total, created in order_events %}
+        <div class="tl-item {% if status == 'Cancelled' %}cancelled{% else %}done{% endif %}">
+          <div class="tl-status">
+            <a href="{{ url_for('cart.order_detail', reference=ref) }}" class="mono">{{ ref }}</a>
+            <span class="status-pill status-{{ status|lower|replace(' ', '-') }}">{{ status }}</span>
+          </div>
+          <div class="tl-time">{{ created.strftime('%d %b %Y, %H:%M') }} &middot; {{ total|money }}</div>
+        </div>
+        {% endfor %}
+      </div>
+      {% else %}
+      <div class="empty" style="padding:40px 20px">
+        <h3 style="font-size:1rem">No order activity yet</h3>
+        <p style="font-size:0.85rem; margin-bottom:16px">Track every order from one place.</p>
+        <a class="btn-primary" href="{{ url_for('catalog.index') }}">Browse the store</a>
+      </div>
+      {% endif %}
+    </div>
+
+    <div class="panel panel-lg">
+      <h2 style="font-size:1.05rem; font-weight:800; margin-bottom:16px">Your reviews</h2>
+      {% if reviews %}
+        {% for r in reviews %}
+        <div class="order-item" style="align-items:flex-start">
+          <div>
+            <div class="stars" style="font-size:0.85rem; margin-bottom:4px">{{ r.rating|stars }}</div>
+            <a class="nm" href="{{ url_for('catalog.product_detail', slug=r.product.slug) if r.product else '#' }}">{{ r.product.name if r.product else 'Removed product' }}</a>
+            <div class="qt" style="margin-top:4px">{{ r.created_at.strftime('%d %b %Y') }}</div>
+            {% if r.title %}<div style="font-size:0.85rem; margin-top:6px">{{ r.title }}</div>{% endif %}
+            <p style="font-size:0.84rem; color:var(--text-secondary); margin-top:4px">{{ r.body }}</p>
+          </div>
+          <form method="post" action="{{ url_for('catalog.delete_review', slug=r.product.slug, review_id=r.id) }}"
+                style="margin-left:auto" data-confirm="Delete this review?">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button class="mini-btn danger" type="submit">Delete</button>
+          </form>
+        </div>
+        {% endfor %}
+      {% else %}
+        <div class="empty" style="padding:36px 20px">
+          <h3 style="font-size:1rem">No reviews written</h3>
+          <p style="font-size:0.85rem">Share your experience on any product page.</p>
+        </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

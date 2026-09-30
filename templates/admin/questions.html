@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block title %}Product Q&A — Indian Store admin{% endblock %}
+
+{% block content %}
+<section class="page-head">
+  <div class="wrap">
+    <nav class="crumbs"><a href="{{ url_for('admin.dashboard') }}">Admin</a> / Product Q&A</nav>
+    <div class="page-head-row">
+      <div>
+        <h1>Product questions</h1>
+        <p class="muted">Answering emails the customer automatically.</p>
+      </div>
+      <div class="seg">
+        <a class="seg-btn {{ 'active' if not only_open else '' }}" href="{{ url_for('admin.questions') }}">All</a>
+        <a class="seg-btn {{ 'active' if only_open else '' }}" href="{{ url_for('admin.questions', open=1) }}">Unanswered</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap">
+    <div class="panel">
+      {% if not questions %}
+      <p class="muted pad">No questions here.</p>
+      {% else %}
+      <ul class="qa-admin-list">
+        {% for q in questions %}
+        <li class="qa-item {{ 'answered' if q.is_answered }}">
+          <div class="qa-meta">
+            <a class="link" href="{{ url_for('catalog.product_detail', slug=q.product.slug) if q.product else '#' }}">
+              {{ q.product.name if q.product else 'Deleted product' }}
+            </a>
+            <span class="muted sm">{{ q.user.full_name if q.user else 'Guest' }} · {{ q.created_at|ts }}</span>
+          </div>
+          <p class="qa-text">{{ q.question }}</p>
+          {% if q.is_answered %}
+          <div class="qa-answer">
+            <strong>Your answer</strong>
+            <p>{{ q.answer }}</p>
+            <span class="muted sm">Replied {{ q.answered_at|ts }}</span>
+          </div>
+          {% else %}
+          <form method="post" action="{{ url_for('admin.answer_question', question_id=q.id) }}" class="stack">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <textarea name="answer" class="form-input" rows="3" required minlength="5"
+                      placeholder="Answer the customer…"></textarea>
+            <button class="btn btn-primary btn-sm" type="submit">Publish answer</button>
+          </form>
+          {% endif %}
+        </li>
+        {% endfor %}
+      </ul>
+      {% endif %}
+    </div>
+  </div>
+</section>
+{% endblock %}

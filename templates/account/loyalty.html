@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% block title %}Indian Store Rewards — {{ summary.tier[0] }}{% endblock %}
+
+{% block content %}
+<section class="page-head">
+  <div class="wrap">
+    <nav class="crumbs"><a href="{{ url_for('account.overview') }}">Account</a> / Rewards</nav>
+    <h1>Indian Store Rewards</h1>
+    <p class="muted">Earn 1 point per dollar, spend 100 points as $1.00.</p>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap">
+    <div class="loyalty-hero" style="--tier:{{ summary.tier[1] }}">
+      <div class="loyalty-ring">
+        <span class="tier-name">{{ summary.tier[0] }}</span>
+        <span class="tier-points">{{ '{:,}'.format(summary.points) }} pts</span>
+        <span class="tier-value">{{ summary.value|money }} in value</span>
+      </div>
+      <div class="loyalty-progress">
+        {% if summary.to_next > 0 %}
+        <div class="progress-track">
+          <div class="progress-fill" style="width: {{ 100 - (summary.to_next / (summary.to_next + summary.points if (summary.to_next + summary.points) else 1) * 100)|round|int }}%"></div>
+        </div>
+        <p class="muted">{{ '{:,}'.format(summary.to_next) }} points to the next tier.</p>
+        {% else %}
+        <p class="muted">You have reached the top tier. Thank you for shopping with Indian Store.</p>
+        {% endif %}
+        <div class="tier-ladder">
+          {% for name, threshold, colour in [('Member', 0, '#34d399'), ('Platinum', 300, '#94a3b8'), ('Titanium', 1000, '#22d3ee'), ('Obsidian', 2500, '#a78bfa')] %}
+          <div class="tier-step {% if summary.points >= threshold %}reached{% endif %}">
+            <span class="dot" style="background:{{ colour }}"></span>
+            <span class="name">{{ name }}</span>
+            <span class="mono sm">{{ threshold }}+</span>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head">
+        <h2>Points activity</h2>
+        <a class="btn btn-ghost btn-sm" href="{{ url_for('cart.view') }}">Redeem points at checkout</a>
+      </div>
+      {% if not events %}
+      <p class="muted pad">No points activity yet. Place an order to start earning.</p>
+      {% else %}
+      <table class="table">
+        <thead><tr><th>When</th><th>Reason</th><th class="num">Change</th><th class="num">Balance after</th></tr></thead>
+        <tbody>
+          {% for e in events %}
+          <tr>
+            <td class="muted">{{ e.created_at|ts }}</td>
+            <td>
+              {{ e.reason }}
+              {% if e.order_id %}
+              <a class="link sm" href="{{ url_for('cart.order_detail', reference=e.order.reference) }}">{{ e.order.reference }}</a>
+              {% endif %}
+            </td>
+            <td class="num {{ 'pos' if e.points > 0 else 'neg' }}">{{ '+' if e.points > 0 else '' }}{{ e.points }}</td>
+            <td class="num mono sm">{{ e.balance_after }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% endif %}
+    </div>
+  </div>
+</section>
+{% endblock %}

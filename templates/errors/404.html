@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block title %}Not found — Indian Store{% endblock %}
+
+{% block content %}
+<div class="empty" style="padding-top:80px">
+  <div class="ico">
+    <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+  </div>
+  <h3>404 &mdash; this node doesn't exist</h3>
+  <p>The page you were looking for has been moved or never shipped.</p>
+  <a class="btn-primary" href="{{ url_for('catalog.index') }}">Back to the store</a>
+</div>
+{% endblock %}

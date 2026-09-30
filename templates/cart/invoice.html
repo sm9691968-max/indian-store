@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <title>{{ order.invoice_number or 'Invoice' }} — Indian Store</title>
+  <style>
+    :root { --ink:#0b1220; --muted:#64748b; --line:#e2e8f0; --accent:#0f766e; }
+    * { box-sizing: border-box; }
+    body { font: 14px/1.55 "Inter", "Segoe UI", system-ui, sans-serif; color: var(--ink);
+           margin: 0; padding: 40px 24px; background: #f8fafc; }
+    .sheet { max-width: 780px; margin: 0 auto; background: #fff; padding: 48px;
+             border: 1px solid var(--line); border-radius: 12px; }
+    header { display: flex; justify-content: space-between; align-items: flex-start;
+             border-bottom: 2px solid var(--ink); padding-bottom: 20px; }
+    .logo { font-size: 26px; font-weight: 800; letter-spacing: -0.02em; }
+    .logo span { color: var(--accent); }
+    h1 { font-size: 20px; margin: 0 0 4px; letter-spacing: 0.04em; text-transform: uppercase; }
+    .doc-no { font-family: ui-monospace, "Cascadia Code", monospace; font-size: 13px; color: var(--muted); }
+    .parties { display: grid; grid-template-columns: 1fr 1fr; gap: 32px; margin: 28px 0; }
+    h2 { font-size: 11px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted);
+         margin: 0 0 8px; font-weight: 700; }
+    address { font-style: normal; }
+    table { width: 100%; border-collapse: collapse; margin-top: 8px; }
+    th { text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em;
+         color: var(--muted); border-bottom: 1px solid var(--line); padding: 10px 8px; }
+    td { padding: 12px 8px; border-bottom: 1px solid #f1f5f9; vertical-align: top; }
+    .num { text-align: right; font-variant-numeric: tabular-nums; }
+    .totals { margin-left: auto; width: 280px; margin-top: 24px; }
+    .totals div { display: flex; justify-content: space-between; padding: 6px 0; }
+    .totals .grand { border-top: 2px solid var(--ink); margin-top: 6px; padding-top: 12px;
+                     font-size: 18px; font-weight: 800; }
+    .meta { margin-top: 32px; padding-top: 20px; border-top: 1px solid var(--line);
+            display: flex; flex-wrap: wrap; gap: 28px; font-size: 12px; color: var(--muted); }
+    .meta b { display: block; color: var(--ink); font-size: 13px; }
+    footer { margin-top: 36px; font-size: 11px; color: var(--muted); text-align: center; }
+    .no-print { max-width: 780px; margin: 0 auto 20px; display: flex; gap: 10px; }
+    .no-print a, .no-print button { font: inherit; padding: 8px 16px; border-radius: 8px;
+      border: 1px solid var(--line); background: #fff; color: var(--ink);
+      text-decoration: none; cursor: pointer; }
+    .no-print a:hover, .no-print button:hover { background: #f1f5f9; }
+    @media print {
+      body { background: #fff; padding: 0; }
+      .sheet { border: 0; border-radius: 0; padding: 0; max-width: none; }
+      .no-print { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <div class="no-print">
+    <button type="button" onclick="window.print()">Print / Save as PDF</button>
+    <a href="{{ url_for('cart.invoice_csv', reference=order.reference) }}">Download CSV</a>
+    <a href="{{ url_for('cart.order_detail', reference=order.reference) }}">Back to order</a>
+  </div>
+
+  <div class="sheet">
+    <header>
+      <div>
+        <div class="logo">Indian Store</div>
+        <div class="muted" style="font-size:12px; margin-top:4px">Curated marketplace · indian-store</div>
+      </div>
+      <div style="text-align:right">
+        <h1>{% if order.status == 'Cancelled' %}Cancelled receipt{% else %}Invoice{% endif %}</h1>
+        <div class="doc-no">{{ order.invoice_no or 'issued on request' }}</div>
+        <div class="doc-no">Order {{ order.reference }}</div>
+      </div>
+    </header>
+
+    <section class="parties">
+      <div>
+        <h2>Billed to</h2>
+        <address>
+          <strong>{{ order.shipping_name }}</strong><br>
+          {{ order.shipping_address }}<br>
+          {{ order.shipping_city }} {{ order.shipping_postal }}<br>
+          {% if order.shipping_phone %}{{ order.shipping_phone }}<br>{% endif %}
+          {% if order.user %}{{ order.user.email }}{% endif %}
+        </address>
+      </div>
+      <div>
+        <h2>Invoice details</h2>
+        <address>
+          <strong>Issued</strong> {{ (order.invoice_issued_at or order.created_at).strftime('%d %B %Y') }}<br>
+          <strong>Placed</strong> {{ order.created_at.strftime('%d %B %Y') }}<br>
+          <strong>Status</strong> {{ order.status }}<br>
+          {% if order.tracking_number %}<strong>Tracking</strong> <span class="doc-no">{{ order.tracking_number }}</span><br>{% endif %}
+          <strong>Payment</strong> {{ order.payment_method or 'Card' }}
+        </address>
+      </div>
+    </section>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Item</th>
+          <th>SKU</th>
+          <th class="num">Qty</th>
+          <th class="num">Unit</th>
+          <th class="num">Total</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for item in order.items %}
+        <tr>
+          <td>
+            <strong>{{ item.product_name }}</strong>
+            {% if item.variant_name %}<div style="color:var(--muted); font-size:12px">{{ item.variant_name }}</div>{% endif %}
+          </td>
+          <td class="doc-no">{{ item.product.sku if item.product else '—' }}</td>
+          <td class="num">{{ item.quantity }}</td>
+          <td class="num">{{ item.unit_price|usd }}</td>
+          <td class="num">{{ item.line_total|usd }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+    <div class="totals">
+      <div><span>Subtotal</span><span>{{ order.subtotal|usd }}</span></div>
+      {% if order.discount %}
+      <div><span>Discount{% if order.coupon_code %} ({{ order.coupon_code }}){% endif %}</span><span>−{{ order.discount|usd }}</span></div>
+      {% endif %}
+      {% if order.points_redeemed %}
+      <div><span>Loyalty redemption ({{ order.points_redeemed }} pts)</span><span>−{{ (order.points_redeemed / 100)|usd }}</span></div>
+      {% endif %}
+      {% if order.gift_card_code %}
+      <div><span>Gift card {{ order.gift_card_code }}</span><span>applied</span></div>
+      {% endif %}
+      <div><span>Delivery</span><span>{{ order.shipping_cost|usd }}</span></div>
+      <div><span>Tax</span><span>{{ order.tax|usd }}</span></div>
+      <div class="grand"><span>Total ({{ order.currency }})</span><span>{{ order.total|usd }}</span></div>
+    </div>
+
+    <div class="meta">
+      <div><b>{{ order.points_earned }} points</b>earned on this order</div>
+      <div><b>{{ order.items|length }} line items</b>{{ order.items|sum(attribute='quantity') }} units</div>
+      <div><b>Payment method</b>{{ order.payment_method or 'Card' }}</div>
+      {% if order.note %}<div><b>Note</b>{{ order.note }}</div>{% endif %}
+    </div>
+
+    <footer>
+      Indian Store is a demonstration storefront. Payments, tax and delivery are simulated, so this
+      document is not a tax invoice.
+    </footer>
+  </div>
+</body>
+</html>

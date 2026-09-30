@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+{% block title %}Your wishlist — Indian Store{% endblock %}
+
+{% block content %}
+<div class="page-head-row">
+  <h1 class="section-title">
+    Saved items
+    <span class="count-pill">{{ total }}</span>
+  </h1>
+
+  {% if products and share_url %}
+  <div class="share-box">
+    <div class="field" style="margin:0">
+      <label for="shareUrl">Share this wishlist</label>
+      <div class="share-row">
+        <input type="text" id="shareUrl" value="{{ share_url }}" readonly>
+        <button class="btn-ghost" type="button" onclick="copyText('{{ share_url }}', 'Share link')">Copy link</button>
+      </div>
+    </div>
+    <p class="help-text">Anyone with the link can view this list. They cannot change it.</p>
+  </div>
+  {% endif %}
+</div>
+
+{% if not products %}
+<div class="panel empty">
+  <div class="ico">
+    <svg viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
+  </div>
+  <h3>Nothing saved yet</h3>
+  <p>Tap the heart on any product to keep it here for later.</p>
+  <a class="btn-primary" href="{{ url_for('catalog.index') }}">Browse the store</a>
+</div>
+{% else %}
+<div class="product-grid">
+  {% for p in products %}
+  <article class="product-card">
+    <a class="product-thumb" href="{{ url_for('catalog.product_detail', slug=p.slug) }}">
+      {% if p.badge %}<span class="product-badge">{{ p.badge }}</span>{% endif %}
+      {% if p.stock == 0 %}<span class="out-chip">Sold out</span>{% endif %}
+      {% if p.image_url %}<img src="{{ p.image_url }}" alt="{{ p.name }}" loading="lazy">
+      {% else %}<span class="thumb-glyph">{{ p.category.name[:1] if p.category else 'N' }}</span>{% endif %}
+    </a>
+    <form action="{{ url_for('catalog.toggle_wishlist', product_id=p.id) }}" method="post" data-wishlist>
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <button class="wish-btn on" title="Remove from wishlist" aria-label="Remove {{ p.name }} from wishlist">
+        <svg viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
+      </button>
+    </form>
+    <div class="product-body">
+      <span class="product-cat">{{ p.brand }}</span>
+      <a class="product-name" href="{{ url_for('catalog.product_detail', slug=p.slug) }}">{{ p.name }}</a>
+      <div class="rating-row">
+        <span class="stars">{{ p.rating|stars }}</span>
+        <span class="rc">{{ p.review_count }} reviews</span>
+      </div>
+      <div class="product-foot">
+        <span class="price">{{ p.price|money }}</span>
+        {% if p.stock > 0 %}
+          {% if p.id in in_cart %}
+          <span class="pill ok">In cart</span>
+          {% else %}
+          <form action="{{ url_for('cart.add', product_id=p.id) }}" method="post">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="quantity" value="1">
+            <button class="add-btn" type="submit" title="Move to cart">
+              <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+            </button>
+          </form>
+          {% endif %}
+        {% else %}
+        <span class="pill bad">Sold out</span>
+        {% endif %}
+      </div>
+    </div>
+  </article>
+  {% endfor %}
+</div>
+{% endif %}
+{% endblock %}

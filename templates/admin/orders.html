@@ -1,0 +1,89 @@
+﻿{% extends "base.html" %}
+{% from "admin/_nav.html" import nav with context %}
+{% block title %}Orders — Indian Store Admin{% endblock %}
+
+{% block content %}
+<div class="admin-layout">
+  {{ nav('orders') }}
+
+  <div>
+    <div class="admin-head">
+      <div>
+        <h1 class="section-title" style="margin-bottom:4px">Orders</h1>
+        <p class="muted" style="font-size:0.82rem">{{ orders|length }} matching</p>
+      </div>
+    </div>
+
+    <div class="chip-row">
+      <a class="chip {% if not status_filter %}active{% endif %}" href="{{ url_for('admin.orders') }}">All</a>
+      {% for status, count in counts.items() %}
+      <a class="chip {% if status_filter == status %}active{% endif %}"
+         href="{{ url_for('admin.orders', status=status) }}">
+        {{ status }} <span class="n">{{ count }}</span>
+      </a>
+      {% endfor %}
+    </div>
+
+    <div class="panel" style="margin-bottom:16px">
+      <form method="get" class="coupon-form">
+        {% if status_filter %}<input type="hidden" name="status" value="{{ status_filter }}">{% endif %}
+        <input type="search" name="q" value="{{ search }}" placeholder="Reference, name or email..." aria-label="Search orders">
+        <button class="btn-primary" type="submit" style="height:40px; padding:0 18px">Search</button>
+        {% if search %}<a class="mini-btn" href="{{ url_for('admin.orders', status=status_filter) }}">Clear</a>{% endif %}
+      </form>
+    </div>
+
+    <div class="panel">
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>Reference</th><th>Customer</th><th>Items</th><th>Total</th><th>Update status</th></tr>
+          </thead>
+          <tbody>
+            {% for o in orders %}
+            <tr>
+              <td>
+                <a class="mono" href="{{ url_for('cart.order_detail', reference=o.reference) }}"
+                   style="font-weight:600; text-decoration:none">{{ o.reference }}</a>
+                <div class="muted" style="font-size:0.74rem">{{ o.created_at.strftime('%d %b %Y') }}</div>
+              </td>
+              <td>
+                {{ o.shipping_name }}<br>
+                <span class="muted" style="font-size:0.76rem">{{ o.shipping_city }} {{ o.shipping_postal }}</span>
+              </td>
+              <td>
+                <div style="font-size:0.82rem">{{ o.item_count }} item{{ '' if o.item_count == 1 else 's' }}</div>
+                <span class="status-pill status-{{ status_slug.get(o.status, o.status|lower|replace(' ', '-')) }}">{{ o.status }}</span>
+              </td>
+              <td class="mono">
+                {{ o.total|money }}
+                {% if o.discount > 0 %}<div class="muted" style="font-size:0.72rem">-{{ o.discount|money }} coupon</div>{% endif %}
+              </td>
+              <td>
+                <form method="post" action="{{ url_for('admin.update_order_status', order_id=o.id) }}"
+                      style="display:flex; gap:7px; align-items:center; flex-wrap:wrap">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                  <select name="status" style="width:auto; height:34px; font-size:0.8rem" aria-label="Status for {{ o.reference }}">
+                    {% for status in ['Processing', 'Packed', 'Shipped', 'Out for delivery', 'Delivered', 'Cancelled'] %}
+                    <option value="{{ status }}" {% if o.status == status %}selected{% endif %}>{{ status }}</option>
+                    {% endfor %}
+                  </select>
+                  <input type="text" name="note" placeholder="Note (optional)" maxlength="200"
+                         style="width:130px; height:34px; font-size:0.8rem" aria-label="Note for {{ o.reference }}">
+                  <button class="mini-btn go" type="submit">Save</button>
+                </form>
+                {% if o.tracking_number %}
+                <div class="muted" style="font-size:0.72rem; margin-top:5px">{{ o.carrier }} · {{ o.tracking_number }}</div>
+                {% endif %}
+              </td>
+            </tr>
+            {% else %}
+            <tr><td colspan="5" class="muted" style="text-align:center; padding:34px">No orders match those filters.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

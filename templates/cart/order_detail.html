@@ -1,0 +1,118 @@
+{% extends "base.html" %}
+{% block title %}Order {{ order.reference }} — Indian Store{% endblock %}
+
+{% block content %}
+<nav class="crumb">
+  <a href="{{ url_for('cart.orders') }}">Orders</a>
+  <span class="sep">/</span>
+  <span>{{ order.reference }}</span>
+</nav>
+
+<div class="toolbar">
+  <div>
+    <h1 class="section-title" style="margin-bottom:6px">
+      Order {{ order.reference }}
+      <span class="status-pill status-{{ order.status|lower|replace(' ', '-') }}">{{ order.status }}</span>
+    </h1>
+    <p class="muted" style="font-size:0.82rem">Placed {{ order.created_at.strftime('%d %B %Y at %H:%M') }} &middot; last updated {{ order.updated_at.strftime('%d %b %Y, %H:%M') }}</p>
+  </div>
+  <div style="display:flex; gap:10px; align-items:center">
+    <a class="btn-ghost" href="{{ url_for('cart.orders') }}">All orders</a>
+    {% if order.is_cancellable %}
+    <form method="post" action="{{ url_for('cart.cancel_order', reference=order.reference) }}"
+          data-confirm="Cancel this order? Stock will be returned to inventory.">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <button class="btn-ghost" type="submit" style="color:var(--accent-rose)">Cancel order</button>
+    </form>
+    {% endif %}
+  </div>
+</div>
+
+<div class="cart-layout">
+  <div style="display:grid; gap:18px">
+    <div class="panel">
+      <h2 style="font-size:1.05rem; font-weight:800; margin-bottom:16px">
+        Items ({{ order.item_count }})
+      </h2>
+      {% for item in order.items %}
+      <div class="order-item">
+        <div class="mini">
+          {% if item.product and item.product.image_url %}<img src="{{ item.product.image_url }}" alt="">
+          {% elif item.product and item.product.category %}{{ item.product.category.name[:1] }}
+          {% else %}&mdash;{% endif %}
+        </div>
+        <div>
+          {% if item.product %}
+          <a class="nm" href="{{ url_for('catalog.product_detail', slug=item.product.slug) }}">{{ item.product_name or item.product.name }}</a>
+          {% else %}
+          <span class="nm">{{ item.product_name }}</span>
+          {% endif %}
+          <div class="qt">{{ item.unit_price|money }} each &middot; qty {{ item.quantity }}</div>
+        </div>
+        <div class="pr">{{ (item.unit_price|float * item.quantity)|money }}</div>
+      </div>
+      {% endfor %}
+    </div>
+
+    <div class="panel">
+      <h2 style="font-size:1.05rem; font-weight:800; margin-bottom:18px">Tracking</h2>
+      <div class="timeline">
+        {% for event in order.events %}
+        <div class="tl-item {% if event.status == 'Cancelled' %}cancelled{% else %}done{% endif %}">
+          <div class="tl-status">{{ event.status }}</div>
+          <div class="tl-time">{{ event.created_at.strftime('%d %b %Y, %H:%M') }}</div>
+          {% if event.note %}<div class="tl-note">{{ event.note }}</div>{% endif %}
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+
+  <div style="display:grid; gap:18px; position:sticky; top:96px; align-content:start">
+    {% if order.tracking_number %}
+    <div class="panel">
+      <h2 style="font-size:1.05rem; font-weight:800; margin-bottom:12px">Shipment</h2>
+      <div class="tracking-box" style="margin-bottom:10px">
+        <div><div class="k">Carrier</div><div class="v">{{ order.carrier }}</div></div>
+      </div>
+      <div class="tracking-box">
+        <div><div class="k">Tracking number</div><div class="v">{{ order.tracking_number }}</div></div>
+      </div>
+    </div>
+    {% endif %}
+
+    <div class="panel">
+      <h2 style="font-size:1.05rem; font-weight:800; margin-bottom:14px">Payment summary</h2>
+      <div class="summary-line"><span class="k">Subtotal</span><span class="v">{{ order.subtotal|money }}</span></div>
+      {% if order.discount > 0 %}
+      <div class="summary-line discount"><span class="k">Discount ({{ order.coupon_code }})</span><span class="v">&minus;{{ order.discount|money }}</span></div>
+      {% endif %}
+      <div class="summary-line {% if order.shipping_cost == 0 %}free{% endif %}">
+        <span class="k">Shipping</span>
+        <span class="v">{% if order.shipping_cost == 0 %}FREE{% else %}{{ order.shipping_cost|money }}{% endif %}</span>
+      </div>
+      <div class="summary-line"><span class="k">Tax</span><span class="v">{{ order.tax|money }}</span></div>
+      <div class="summary-total"><span>Total</span><span class="v">{{ order.total|money }}</span></div>
+      <p class="muted" style="font-size:0.76rem; margin-top:12px">Paid with {{ order.payment_method }}.</p>
+    </div>
+
+    <div class="panel">
+      <h2 style="font-size:1.05rem; font-weight:800; margin-bottom:14px">Delivery address</h2>
+      <div class="info-list">
+        <div class="info-row"><span class="k">Recipient</span><span class="v">{{ order.shipping_name }}</span></div>
+        <div class="info-row"><span class="k">Address</span><span class="v">{{ order.shipping_address }}</span></div>
+        <div class="info-row"><span class="k">City</span><span class="v">{{ order.shipping_city }}</span></div>
+        <div class="info-row"><span class="k">Postal code</span><span class="v">{{ order.shipping_postal }}</span></div>
+        {% if order.shipping_phone %}
+        <div class="info-row"><span class="k">Phone</span><span class="v">{{ order.shipping_phone }}</span></div>
+        {% endif %}
+      </div>
+      {% if order.note %}
+      <div class="info-list" style="margin-top:14px">
+        <div class="info-row"><span class="k">Notes</span><span class="v">{{ order.note }}</span></div>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

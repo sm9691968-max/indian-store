@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% block title %}Your alerts — Indian Store{% endblock %}
+
+{% block content %}
+<section class="page-head">
+  <div class="wrap">
+    <nav class="crumbs"><a href="{{ url_for('account.overview') }}">Account</a> / Alerts</nav>
+    <h1>Stock &amp; price alerts</h1>
+    <p class="muted">We email you the moment something you care about changes.</p>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap">
+    <div class="panel">
+      {% if not alerts %}
+      <div class="empty-state sm">
+        <h2>No alerts set</h2>
+        <p>Open a product and choose "Notify me" to watch its stock or price.</p>
+        <a class="btn btn-primary" href="{{ url_for('catalog.index') }}">Browse products</a>
+      </div>
+      {% else %}
+      <table class="table">
+        <thead><tr><th>Product</th><th>Alert</th><th>Target</th><th>State</th><th></th></tr></thead>
+        <tbody>
+          {% for a in alerts %}
+          <tr>
+            <td>
+              <a class="link" href="{{ url_for('catalog.product_detail', slug=a.product.slug) }}">{{ a.product.name }}</a>
+              <div class="muted sm">{{ a.product.brand }}</div>
+            </td>
+            <td>
+              <span class="tag {{ 'tag-green' if a.kind == 'back_in_stock' else 'tag-amber' }}">
+                {{ 'Back in stock' if a.kind == 'back_in_stock' else 'Price drop' }}
+              </span>
+            </td>
+            <td class="mono sm">
+              {% if a.kind == 'price_drop' %}{{ a.product.price|money }} now · target {{ a.target_price|money }}
+              {% else %}Currently {% if a.product.stock > 0 %}in stock{% else %}out of stock{% endif %}{% endif %}
+            </td>
+            <td>
+              {% if a.notified %}
+              <span class="tag tag-slate">Sent</span>
+              {% else %}
+              <span class="tag tag-blue">Watching</span>
+              {% endif %}
+            </td>
+            <td class="num">
+              <form method="post" action="{{ url_for('catalog.delete_alert', alert_id=a.id) }}">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button class="btn btn-ghost btn-sm" type="submit">Remove</button>
+              </form>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% endif %}
+    </div>
+  </div>
+</section>
+{% endblock %}

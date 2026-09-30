@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}Indian Store{% endblock %}</title>
+  {% block meta %}
+  <meta name="description" content="{{ site_description }}">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="{{ site_name }}">
+  <meta property="og:title" content="{% block og_title %}Indian Store — curated marketplace{% endblock %}">
+  <meta property="og:description" content="{{ site_description }}">
+  <meta property="og:url" content="{{ request.url }}">
+  <meta property="og:image" content="{{ og_image }}">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="{{ self.og_title() }}">
+  <meta name="twitter:description" content="{{ site_description }}">
+  <meta name="twitter:image" content="{{ og_image }}">
+  <link rel="canonical" href="{{ request.base_url }}">
+  {% endblock %}
+  <script type="application/ld+json">{% block json_ld %}{{ {
+    "@context": "https://schema.org",
+    "@type": "OnlineStore",
+    "name": site_name,
+    "description": site_description,
+    "url": request.url_root
+  } | json_ld }}{% endblock %}</script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/site.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/extended.css') }}">
+  <script>
+    if (localStorage.getItem('indian-store-theme') === 'light') {
+      document.documentElement.setAttribute('data-theme', 'light');
+    }
+  </script>
+</head>
+<body>
+  <div class="site-orb a"></div>
+  <div class="site-orb b"></div>
+  <div class="site-orb c"></div>
+  <div class="page-grid-bg"></div>
+
+  <header class="site-header">
+    <div class="header-inner">
+      <a class="brand" href="{{ url_for('catalog.index') }}">
+        <div class="brand-mark">
+          <svg viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"></path></svg>
+        </div>
+        <span class="brand-name">Indian Store</span>
+        <span class="brand-tag">Store</span>
+      </a>
+
+      <form class="search-form" action="{{ url_for('catalog.index') }}" method="get"
+            role="search" data-autocomplete="{{ url_for('catalog.search_suggest') }}">
+        <svg class="s-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+        <input type="search" name="q" placeholder="Search the grid..." value="{{ filters.q if filters is defined and filters.q else (search if search is defined else '') }}" aria-label="Search products"
+               autocomplete="off" role="combobox" aria-expanded="false" aria-controls="searchSuggest" aria-autocomplete="list">
+        <div class="ac-dropdown" id="searchSuggest" role="listbox" hidden></div>
+        <button type="submit" aria-label="Search">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+        </button>
+      </form>
+
+      <div class="header-actions">
+        <form class="currency-form" method="post" action="{{ url_for('set_currency') }}">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <label class="sr-only" for="currencySelect">Currency</label>
+          <select id="currencySelect" name="currency" class="form-input xs"
+                  onchange="this.form.submit()" title="Display currency">
+            {% for code, meta in currencies.items() %}
+            <option value="{{ code }}" {% if code == currency %}selected{% endif %}>{{ code }}</option>
+            {% endfor %}
+          </select>
+        </form>
+
+        {% if current_user %}
+        <a class="icon-btn" href="{{ url_for('catalog.wishlist') }}" title="Wishlist" aria-label="Wishlist">
+          <svg viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
+          {% if wish_count %}<span class="count">{{ wish_count }}</span>{% endif %}
+        </a>
+        {% if alert_count %}
+        <a class="icon-btn" href="{{ url_for('account.alerts') }}" title="Alerts" aria-label="Alerts">
+          <svg viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.7 21a2 2 0 0 1-3.4 0"></path></svg>
+          <span class="count count-alert">{{ alert_count }}</span>
+        </a>
+        {% endif %}
+        {% endif %}
+
+        {% if compare_count %}
+        <a class="icon-btn" href="{{ url_for('catalog.compare') }}" title="Compare" aria-label="Compare">
+          <svg viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"></rect><rect x="14" y="3" width="7" height="7" rx="1"></rect><rect x="3" y="14" width="7" height="7" rx="1"></rect><rect x="14" y="14" width="7" height="7" rx="1"></rect></svg>
+          <span class="count">{{ compare_count }}</span>
+        </a>
+        {% endif %}
+
+        <a class="icon-btn" href="{{ url_for('catalog.recently_viewed') }}" title="Recently viewed" aria-label="Recently viewed">
+          <svg viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"></circle><polyline points="12 7 12 12 15 14"></polyline></svg>
+        </a>
+
+        <a class="icon-btn" href="{{ url_for('cart.view') }}" title="Cart" aria-label="Cart">
+          <svg viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path></svg>
+          {% if cart_count %}<span class="count">{{ cart_count }}</span>{% endif %}
+        </a>
+
+        {% if current_user %}
+          <a class="avatar-chip" href="{{ url_for('account.overview') }}" title="My account">
+            <span class="av">{{ current_user.initials }}</span>
+            <span class="who">{{ current_user.full_name.split()[0] }}{% if current_user.is_admin %}<small>Admin console</small>{% else %}<small>My account</small>{% endif %}</span>
+          </a>
+          <form action="{{ url_for('auth.logout') }}" method="post" style="display:inline">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button class="btn-ghost" type="submit" title="Sign out">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+            </button>
+          </form>
+        {% else %}
+          <a class="btn-primary" href="{{ url_for('auth.login') }}">Sign in</a>
+        {% endif %}
+      </div>
+    </div>
+  </header>
+
+  <div class="toast-stack" id="toastStack"></div>
+  <div id="flashPayload" hidden>{{ get_flashed_messages(with_categories=true) | tojson }}</div>
+
+  <main class="shell page">
+    {% block content %}{% endblock %}
+  </main>
+
+  <footer class="footer">
+    <div class="footer-inner">
+      <div>&copy; {{ now_year }} Indian Store &middot; Demo build</div>
+      <div class="footer-links">
+        <a href="{{ url_for('catalog.index') }}">Shop</a>
+        {% if current_user %}<a href="{{ url_for('catalog.wishlist') }}">Wishlist</a>{% endif %}
+        {% if current_user %}<a href="{{ url_for('cart.orders') }}">Orders</a>{% endif %}
+        {% if current_user and current_user.is_admin %}<a href="{{ url_for('admin.dashboard') }}">Admin</a>{% endif %}
+        <a href="{{ url_for('auth.login') }}">Auth</a>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    const toastStack = document.getElementById('toastStack');
+    const flash = JSON.parse(document.getElementById('flashPayload').textContent || '[]');
+    flash.forEach(([category, message]) => showToast(message, category));
+
+    function showToast(message, type = 'info') {
+      const el = document.createElement('div');
+      el.className = `toast ${type}`;
+      el.textContent = message;
+      toastStack.appendChild(el);
+      setTimeout(() => {
+        el.classList.add('leaving');
+        setTimeout(() => el.remove(), 300);
+      }, 3600);
+    }
+
+    // Quantity steppers
+    document.querySelectorAll('[data-stepper]').forEach((stepper) => {
+      const input = stepper.querySelector('input');
+      const min = parseInt(input.min || '1', 10);
+      const max = parseInt(input.max || '99', 10);
+      const down = stepper.querySelector('[data-down]');
+      const up = stepper.querySelector('[data-up]');
+      if (down) down.addEventListener('click', () => {
+        input.value = Math.max(min, (parseInt(input.value, 10) || min) - 1);
+        input.dispatchEvent(new Event('change', { bubbles: true }));
+      });
+      if (up) up.addEventListener('click', () => {
+        input.value = Math.min(max, (parseInt(input.value, 10) || min) + 1);
+        input.dispatchEvent(new Event('change', { bubbles: true }));
+      });
+    });
+
+    // Auto-submit quantity changes in the cart
+    document.querySelectorAll('form[data-autosubmit] input[name="quantity"]').forEach((input) => {
+      input.addEventListener('change', () => input.form.submit());
+    });
+
+    // Wishlist toggle without a page reload
+    document.querySelectorAll('form[data-wishlist]').forEach((form) => {
+      form.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const button = form.querySelector('.wish-btn');
+        try {
+          const response = await fetch(form.action, {
+            method: 'POST',
+            headers: { 'Accept': 'application/json' },
+            body: new FormData(form),
+          });
+          if (!response.ok) throw new Error('request failed');
+          const data = await response.json();
+          if (button) button.classList.toggle('on', data.saved);
+          showToast(data.message, data.saved ? 'success' : 'info');
+        } catch (error) {
+          form.submit();
+        }
+      });
+    });
+
+    // Confirm destructive actions
+    document.querySelectorAll('form[data-confirm]').forEach((form) => {
+      form.addEventListener('submit', (event) => {
+        if (!window.confirm(form.dataset.confirm)) event.preventDefault();
+      });
+    });
+
+    // Auto-submit filter checkboxes
+    document.querySelectorAll('form[data-autofilter] input[type="checkbox"]').forEach((box) => {
+      box.addEventListener('change', () => box.form.submit());
+    });
+
+    // Copy-to-clipboard helpers used by the 2FA and recovery-code panels
+    window.copyText = async (text, label) => {
+      try {
+        await navigator.clipboard.writeText(text);
+        showToast(`${label || 'Value'} copied to clipboard.`, 'success');
+      } catch (error) {
+        showToast('Could not access the clipboard.', 'error');
+      }
+    };
+    window.copySecret = (secret) => copyText(secret, 'Secret key');
+    window.copyRecovery = () => {
+      const codes = [...document.querySelectorAll('.recovery-code')].map((n) => n.textContent.trim());
+      if (codes.length) copyText(codes.join('\n'), 'Recovery codes');
+    };
+
+    // Live search autocomplete
+    (function liveSearch() {
+      const form = document.querySelector('form[data-autocomplete]');
+      if (!form) return;
+      const input = form.querySelector('input[name="q"]');
+      const panel = document.getElementById('searchSuggest');
+      let timer = null;
+      let controller = null;
+      let hits = [];
+
+      const close = () => {
+        panel.hidden = true;
+        panel.innerHTML = '';
+        input.setAttribute('aria-expanded', 'false');
+        hits = [];
+      };
+
+      const render = (data) => {
+        hits = data.results || [];
+        if (!hits.length) {
+          panel.innerHTML = `<div class="ac-empty">No matches for “${escapeHtml(data.query)}”</div>`;
+        } else {
+          panel.innerHTML = hits.map((p, i) => `
+            <a class="ac-item" role="option" aria-selected="false" href="/product/${p.slug}">
+              <img src="${p.image}" alt="" loading="lazy">
+              <span class="ac-meta">
+                <span class="ac-name">${escapeHtml(p.name)}</span>
+                <span class="ac-brand">${escapeHtml(p.brand)}</span>
+              </span>
+              <span class="ac-price">${escapeHtml(p.price)}</span>
+            </a>`).join('');
+        }
+        panel.hidden = false;
+        input.setAttribute('aria-expanded', 'true');
+      };
+
+      const escapeHtml = (value) => String(value ?? '').replace(/[&<>"']/g,
+        (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+
+      input.addEventListener('input', () => {
+        clearTimeout(timer);
+        const term = input.value.trim();
+        if (term.length < 2) { close(); return; }
+        timer = setTimeout(async () => {
+          if (controller) controller.abort();
+          controller = new AbortController();
+          try {
+            const response = await fetch(`${form.dataset.autocomplete}?q=${encodeURIComponent(term)}`, {
+              signal: controller.signal,
+              headers: { 'Accept': 'application/json' },
+            });
+            if (!response.ok) return;
+            render(await response.json());
+          } catch (error) {
+            if (error.name !== 'AbortError') close();
+          }
+        }, 180);
+      });
+
+      input.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape') close();
+        if (event.key === 'ArrowDown' && hits.length) {
+          event.preventDefault();
+          panel.querySelector('.ac-item')?.focus();
+        }
+      });
+
+      document.addEventListener('click', (event) => {
+        if (!form.contains(event.target)) close();
+      });
+    })();
+  </script>
+</body>
+</html>

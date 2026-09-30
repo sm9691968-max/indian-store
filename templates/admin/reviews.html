@@ -1,0 +1,52 @@
+﻿{% extends "base.html" %}
+{% from "admin/_nav.html" import nav with context %}
+{% block title %}Reviews — Indian Store Admin{% endblock %}
+
+{% block content %}
+<div class="admin-layout">
+  {{ nav('reviews') }}
+
+  <div>
+    <div class="admin-head">
+      <div>
+        <h1 class="section-title" style="margin-bottom:4px">Reviews</h1>
+        <p class="muted" style="font-size:0.82rem">Latest 50 across the catalogue.</p>
+      </div>
+    </div>
+
+    <div class="panel">
+      {% for r in reviews %}
+      <div class="order-item" style="align-items:flex-start; padding:14px 0">
+        <div style="min-width:0">
+          <div class="review-head" style="margin-bottom:6px">
+            <div class="review-av">{{ r.user.initials }}</div>
+            <div>
+              <div class="review-who">{{ r.user.full_name }}</div>
+              <div class="review-when">
+                {% if r.product %}
+                <a href="{{ url_for('catalog.product_detail', slug=r.product.slug) }}">{{ r.product.name }}</a>
+                &middot; {% endif %}
+                {{ r.created_at.strftime('%d %b %Y') }}
+              </div>
+            </div>
+            <span class="stars" style="font-size:0.82rem; margin-left:14px">{{ r.rating|stars }}</span>
+          </div>
+          {% if r.title %}<div class="review-title">{{ r.title }}</div>{% endif %}
+          <p style="font-size:0.86rem; color:var(--text-secondary); margin-top:4px">{{ r.body }}</p>
+        </div>
+        <form method="post" action="{{ url_for('admin.delete_review', review_id=r.id) }}"
+              style="margin-left:auto" data-confirm="Remove this review? The product rating is recalculated.">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button class="mini-btn danger" type="submit">Remove</button>
+        </form>
+      </div>
+      {% else %}
+      <div class="empty" style="padding:44px 20px">
+        <h3 style="font-size:1rem">No reviews yet</h3>
+        <p style="font-size:0.85rem">Customer feedback will appear here for moderation.</p>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+{% endblock %}

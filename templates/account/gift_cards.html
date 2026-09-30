@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block title %}Gift cards — Indian Store{% endblock %}
+
+{% block content %}
+<section class="page-head">
+  <div class="wrap">
+    <nav class="crumbs"><a href="{{ url_for('account.overview') }}">Account</a> / Gift cards</nav>
+    <h1>Gift cards</h1>
+    <p class="muted">Apply a balance at checkout, on top of coupons and loyalty points.</p>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap">
+    <div class="panel">
+      {% if not cards %}
+      <div class="empty-state sm">
+        <h2>No gift cards yet</h2>
+        <p>Gift cards issued by Indian Store support appear here, ready to redeem.</p>
+        <a class="btn btn-secondary" href="{{ url_for('account.support') }}">Contact support</a>
+      </div>
+      {% else %}
+      <div class="gift-grid">
+        {% for c in cards %}
+        <article class="gift-card {{ 'spent' if not c.is_redeemable }}">
+          <div class="gift-top">
+            <span class="brand-chip">Indian Store</span>
+            <span class="tag {{ 'tag-green' if c.is_redeemable else 'tag-slate' }}">
+              {{ 'Active' if c.is_redeemable else 'Spent' }}
+            </span>
+          </div>
+          <div class="gift-code mono">{{ c.code }}</div>
+          <div class="gift-balance">{{ c.balance|money }}</div>
+          <dl class="spec-list compact">
+            <div><dt>Issued</dt><dd>{{ c.created_at.strftime('%d %b %Y') }}</dd></div>
+            <div><dt>Original</dt><dd>{{ c.initial_balance|money }}</dd></div>
+            <div><dt>Redeemed</dt><dd>{{ c.redeemed_count }} time{{ '' if c.redeemed_count == 1 else 's' }}</dd></div>
+            {% if c.expires_at %}<div><dt>Expires</dt><dd>{{ c.expires_at.strftime('%d %b %Y') }}</dd></div>{% endif %}
+          </dl>
+        </article>
+        {% endfor %}
+      </div>
+      {% endif %}
+    </div>
+
+    <div class="panel">
+      <h3>How gift cards work</h3>
+      <ul class="bullets">
+        <li>A card covers merchandise, delivery and tax, but never drives an order below zero.</li>
+        <li>Coupons apply first, then loyalty points, then the gift card balance.</li>
+        <li>Any unused balance stays on the card for the next order.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+{% endblock %}

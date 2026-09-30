@@ -1,0 +1,14 @@
+# Virtualenv
+.venv/
+venv/
+
+# Python bytecode
+__pycache__/
+*.py[cod]
+
+# SQLite database - rebuild with `python seed.py`
+instance/
+
+# Runtime logs from `python run.py`
+*.log
+*.err

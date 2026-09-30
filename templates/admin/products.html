@@ -1,0 +1,145 @@
+﻿{% extends "base.html" %}
+{% from "admin/_nav.html" import nav with context %}
+{% block title %}Products — Indian Store Admin{% endblock %}
+
+{% block content %}
+<div class="admin-layout">
+  {{ nav('products') }}
+
+  <div>
+    <div class="admin-head">
+      <div>
+        <h1 class="section-title" style="margin-bottom:4px">Products</h1>
+        <p class="muted" style="font-size:0.82rem">{{ products|length }} in catalogue</p>
+      </div>
+    </div>
+
+    <div class="admin-grid-2" style="align-items:start; margin-bottom:16px">
+      <div class="panel">
+        <h2 style="font-size:1.02rem; font-weight:800; margin-bottom:14px">New product</h2>
+        <form method="post" action="{{ url_for('admin.products') }}">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <div class="field">
+            <label for="name">Name</label>
+            <input type="text" id="name" name="name" required minlength="3" placeholder="Apex Studio Headphones">
+          </div>
+          <div class="form-grid">
+            <div class="field">
+              <label for="price">Price (USD)</label>
+              <input type="number" id="price" name="price" step="0.01" min="0.01" required>
+            </div>
+            <div class="field">
+              <label for="stock">Stock</label>
+              <input type="number" id="stock" name="stock" min="0" value="0">
+            </div>
+            <div class="field">
+              <label for="sku">SKU</label>
+              <input type="text" id="sku" name="sku" maxlength="40" placeholder="NX-0001">
+            </div>
+            <div class="field">
+              <label for="brand">Brand</label>
+              <input type="text" id="brand" name="brand" maxlength="80" value="Indian Store">
+            </div>
+          </div>
+          <div class="field">
+            <label for="category_id">Category</label>
+            <select id="category_id" name="category_id">
+              <option value="">Uncategorised</option>
+              {% for c in categories %}
+              <option value="{{ c.id }}">{{ c.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="field">
+            <label for="image_url">Image URL</label>
+            <input type="url" id="image_url" name="image_url" placeholder="https://...">
+          </div>
+          <div class="field">
+            <label for="description">Description</label>
+            <textarea id="description" name="description" placeholder="What makes it worth buying?"></textarea>
+          </div>
+          <label class="switch-row" style="margin:4px 0 18px">
+            <div>
+              <div class="t">Feature on the home page</div>
+              <div class="s">Shows in the featured strip.</div>
+            </div>
+            <span class="toggle">
+              <input type="checkbox" name="is_featured" value="1">
+              <span class="track"></span>
+            </span>
+          </label>
+          <button class="btn-primary" type="submit">Create product</button>
+        </form>
+      </div>
+
+      <div class="panel">
+        <div class="toolbar" style="margin-bottom:14px">
+          <h2 style="font-size:1.02rem; font-weight:800">Search</h2>
+        </div>
+        <form method="get" class="coupon-form">
+          <input type="search" name="q" value="{{ search }}" placeholder="Name or SKU..." aria-label="Search products">
+          <button class="btn-primary" type="submit" style="height:40px; padding:0 18px">Find</button>
+        </form>
+        <p class="help-text" style="margin-top:10px">Leave blank to list everything. Archived products stay visible here so you can restore them.</p>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>Product</th><th>Category</th><th>Price</th><th>Stock</th><th>State</th><th>Actions</th></tr>
+          </thead>
+          <tbody>
+            {% for p in products %}
+            <tr>
+              <td>
+                <div style="display:flex; align-items:center; gap:11px">
+                  <div class="mini" style="flex-shrink:0">
+                    {% if p.image_url %}<img src="{{ p.image_url }}" alt="">
+                    {% else %}{{ p.category.name[:1] if p.category else 'N' }}{% endif %}
+                  </div>
+                  <div>
+                    <div style="font-weight:600">{{ p.name }}</div>
+                    <div class="muted" style="font-size:0.74rem">
+                      {{ p.sku or 'no SKU' }} &middot; {{ p.review_count }} reviews
+                      {% if p.is_featured %} &middot; <span style="color:var(--accent-primary)">featured</span>{% endif %}
+                    </div>
+                  </div>
+                </div>
+              </td>
+              <td class="muted" style="font-size:0.8rem">{{ p.category.name if p.category else '—' }}</td>
+              <td class="mono">{{ p.price|money }}</td>
+              <td>
+                <span class="pill {{ 'bad' if p.stock == 0 else ('warn' if p.stock <= p.low_stock_threshold else 'ok') }}">
+                  {{ p.stock }}
+                </span>
+              </td>
+              <td>
+                <span class="pill {{ 'ok' if p.is_active else 'muted' }}">{{ 'Live' if p.is_active else 'Hidden' }}</span>
+              </td>
+              <td>
+                <div class="row-actions">
+                  <a class="mini-btn" href="{{ url_for('admin.edit_product', product_id=p.id) }}">Edit</a>
+                  <form method="post" action="{{ url_for('admin.toggle_product', product_id=p.id) }}" style="display:inline">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button class="mini-btn" type="submit">{{ 'Hide' if p.is_active else 'Show' }}</button>
+                  </form>
+                  <form method="post" action="{{ url_for('admin.delete_product', product_id=p.id) }}"
+                        data-confirm="Delete “{{ p.name }}”? If it appears in past orders it will be archived instead.">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button class="mini-btn danger" type="submit">Delete</button>
+                  </form>
+                </div>
+              </td>
+            </tr>
+            {% else %}
+            <tr><td colspan="6" class="muted" style="text-align:center; padding:34px">No products found.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

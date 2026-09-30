@@ -1,0 +1,94 @@
+{% extends "base.html" %}
+{% block title %}Compare products — Indian Store{% endblock %}
+
+{% block content %}
+<section class="page-head">
+  <div class="wrap">
+    <nav class="crumbs"><a href="{{ url_for('catalog.index') }}">Home</a> / Compare</nav>
+    <div class="page-head-row">
+      <div>
+        <h1>Side-by-side comparison</h1>
+        <p class="muted">Up to {{ limit }} products, so you can weigh spec sheets without juggling tabs.</p>
+      </div>
+      {% if products %}
+      <form method="post" action="{{ url_for('catalog.compare_clear') }}">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button class="btn btn-ghost" type="submit">Clear all</button>
+      </form>
+      {% endif %}
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap">
+    {% if not products %}
+    <div class="empty-state">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="empty-icon">
+        <rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/>
+        <rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>
+      </svg>
+      <h2>Nothing to compare yet</h2>
+      <p>Open any product and press <strong>Compare</strong> to line up up to {{ limit }} items here.</p>
+      <a class="btn btn-primary" href="{{ url_for('catalog.index') }}">Browse the catalog</a>
+    </div>
+    {% else %}
+    <div class="compare-grid" data-compare-count="{{ products|length }}">
+      {% for p in products %}
+      <article class="compare-col" data-product-id="{{ p.id }}">
+        <form method="post" action="{{ url_for('catalog.add_to_compare', product_id=p.id) }}" class="compare-remove">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button class="icon-btn" type="submit" title="Remove from comparison" aria-label="Remove {{ p.name }}">&times;</button>
+        </form>
+        <a class="compare-media" href="{{ url_for('catalog.product_detail', slug=p.slug) }}">
+          <img src="{{ p.image }}" alt="{{ p.name }}" loading="lazy">
+        </a>
+        <div class="brand-chip">{{ p.brand }}</div>
+        <h3><a href="{{ url_for('catalog.product_detail', slug=p.slug) }}">{{ p.name }}</a></h3>
+        <div class="rate">
+          <span class="stars">{{ p.rating|stars }}</span>
+          <span class="muted sm">{{ '%.1f'|format(p.rating) }} · {{ p.review_count }} reviews</span>
+        </div>
+        <div class="compare-price">{{ p.price|money }}</div>
+        {% if p.compare_at %}<div class="was muted sm">{{ p.compare_at|money }}</div>{% endif %}
+        <dl class="spec-list">
+          <div><dt>Category</dt><dd>{{ p.category.name if p.category else '—' }}</dd></div>
+          <div><dt>SKU</dt><dd class="mono">{{ p.sku }}</dd></div>
+          <div><dt>Availability</dt>
+            <dd class="{% if p.stock > 0 %}{% else %}out{% endif %}">
+              {% if p.stock > 0 %}{{ p.stock }} in stock{% else %}Out of stock{% endif %}
+            </dd>
+          </div>
+          <div><dt>Sold</dt><dd>{{ p.sold_count }} units</dd></div>
+          <div><dt>Warranty</dt><dd>{{ p.warranty_years }} year{{ '' if p.warranty_years == 1 else 's' }}</dd></div>
+          <div><dt>Delivery</dt><dd>{% if p.free_shipping %}Free{% else %}From $9.99{% endif %}</dd></div>
+        </dl>
+        {% if p.specs %}
+        <div class="compare-highlights">
+          {% for line in p.highlight_list %}<span>{{ line }}</span>{% endfor %}
+        </div>
+        {% endif %}
+        <form method="post" action="{{ url_for('cart.add', product_id=p.id) }}" class="compare-add">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <input type="hidden" name="quantity" value="1">
+          <button class="btn btn-primary btn-block" type="submit" {% if p.stock < 1 %}disabled{% endif %}>
+            {% if p.stock > 0 %}Add to cart{% else %}Sold out{% endif %}
+          </button>
+        </form>
+      </article>
+      {% endfor %}
+
+      {% for slot in range(limit - products|length) %}
+      <div class="compare-col compare-empty">
+        <div class="compare-empty-slot">
+          <span class="plus">+</span>
+          <p>Slot {{ slot + 1 }} open</p>
+          <a class="btn btn-ghost btn-sm" href="{{ url_for('catalog.index') }}">Add another</a>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}

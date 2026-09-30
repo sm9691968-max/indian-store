@@ -1,0 +1,254 @@
+{% extends "base.html" %}
+{% block title %}Your cart — Indian Store{% endblock %}
+
+{% block content %}
+<h1 class="section-title" style="margin-bottom:24px">
+  Your cart
+  <span class="count-pill">{{ items|length }} line{{ '' if items|length == 1 else 's' }}</span>
+</h1>
+
+{% if not items %}
+<div class="panel empty">
+  <div class="ico">
+    <svg viewBox="0 0 24 24"><circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path></svg>
+  </div>
+  <h3>Your cart is empty</h3>
+  <p>Add a few pieces of gear and they'll show up here.</p>
+  <a class="btn-primary" href="{{ url_for('catalog.index') }}">Start shopping</a>
+</div>
+{% else %}
+<div class="cart-layout">
+  <div>
+    <div class="panel">
+      {% for item in items %}
+      <div class="cart-row">
+        <a class="cart-thumb" href="{{ url_for('catalog.product_detail', slug=item.product.slug) }}">
+          {% if item.product.image_url %}<img src="{{ item.product.image_url }}" alt="{{ item.product.name }}">
+          {% else %}<span class="thumb-glyph">{{ item.product.category.name[:1] if item.product.category else 'N' }}</span>{% endif %}
+        </a>
+
+        <div>
+          <a class="cart-name" href="{{ url_for('catalog.product_detail', slug=item.product.slug) }}">{{ item.product.name }}</a>
+          <div class="cart-meta">
+            {{ item.product.brand }} &middot; {{ item.product.category.name if item.product.category else 'General' }}
+            {% if item.variant %} &middot; {{ item.variant.name }}{% endif %}
+            &middot; {{ item.unit_price|money }} each
+            {% if not item.in_stock %}<span style="color:var(--accent-rose)"> &middot; Only {{ item.max_quantity }} left</span>{% endif %}
+          </div>
+          <div class="cart-controls">
+            <form method="post" action="{{ url_for('cart.update', item_id=item.id) }}" data-autosubmit style="display:inline">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <input type="hidden" name="action" value="set">
+              <div class="qty-stepper" data-stepper style="height:36px">
+                <button type="button" data-down style="width:32px; height:36px" aria-label="Decrease">&minus;</button>
+                <input type="number" name="quantity" value="{{ item.quantity }}" min="0" max="{{ [item.max_quantity, 20]|min }}" style="width:38px; height:36px; font-size:0.85rem" aria-label="Quantity for {{ item.product.name }}">
+                <button type="button" data-up style="width:32px; height:36px" aria-label="Increase">+</button>
+              </div>
+            </form>
+            <form method="post" action="{{ url_for('cart.update', item_id=item.id) }}" style="display:inline">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <input type="hidden" name="action" value="remove">
+              <button class="link-btn" type="submit">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path></svg>
+                Remove
+              </button>
+            </form>
+            <form method="post" action="{{ url_for('cart.toggle_save', item_id=item.id) }}" style="display:inline">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <button class="link-btn" type="submit">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path></svg>
+                Save for later
+              </button>
+            </form>
+          </div>
+        </div>
+
+        <div class="cart-right">
+          <div class="cart-line-total">{{ item.line_total|money }}</div>
+          {% if not item.in_stock %}
+          <div style="font-size:0.72rem; color:var(--accent-rose); margin-top:4px">Insufficient stock</div>
+          {% endif %}
+        </div>
+      </div>
+      {% endfor %}
+
+      <form method="post" action="{{ url_for('cart.clear') }}" style="margin-top:18px"
+            data-confirm="Remove every item from your cart?">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button class="link-btn" type="submit">Empty cart</button>
+      </form>
+    </div>
+
+    <div class="panel" style="margin-top:16px">
+      <a class="btn-ghost" href="{{ url_for('catalog.index') }}" style="height:44px">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+        Continue shopping
+      </a>
+    </div>
+
+    {% if saved %}
+    <div class="panel" style="margin-top:16px">
+      <div class="panel-head">
+        <h2 style="font-size:1rem; font-weight:800">Saved for later</h2>
+        <span class="count-pill">{{ saved|length }}</span>
+      </div>
+      <p class="muted sm" style="margin-bottom:14px">
+        These stay out of your total but keep their place, so you can come back to them.
+      </p>
+
+      {% for item in saved %}
+      <div class="cart-row cart-row-saved">
+        <a class="cart-thumb" href="{{ url_for('catalog.product_detail', slug=item.product.slug) }}">
+          {% if item.product.image %}<img src="{{ item.product.image }}" alt="{{ item.product.name }}" loading="lazy">
+          {% else %}<span class="thumb-glyph">{{ item.product.category.name[:1] if item.product.category else 'N' }}</span>{% endif %}
+        </a>
+        <div>
+          <a class="cart-name" href="{{ url_for('catalog.product_detail', slug=item.product.slug) }}">{{ item.product.name }}</a>
+          <div class="cart-meta">
+            {{ item.product.brand }}
+            {% if item.variant %} &middot; {{ item.variant.name }}{% endif %}
+            &middot; {{ item.unit_price|money }} each
+          </div>
+          <div class="cart-controls">
+            <form method="post" action="{{ url_for('cart.toggle_save', item_id=item.id) }}" style="display:inline">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <button class="link-btn" type="submit">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+                Move to cart
+              </button>
+            </form>
+            <form method="post" action="{{ url_for('cart.update', item_id=item.id) }}" style="display:inline">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <input type="hidden" name="action" value="remove">
+              <button class="link-btn" type="submit">Remove</button>
+            </form>
+          </div>
+        </div>
+        <div class="cart-right">
+          <div class="cart-line-total">{{ item.line_total|money }}</div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+  </div>
+
+  <div style="position:sticky; top:96px">
+    <div class="panel">
+      <h2 style="font-size:1.1rem; font-weight:800; margin-bottom:16px">Order summary</h2>
+
+      {% set remaining = free_threshold - subtotal %}
+      {% if remaining > 0 %}
+      <div class="ship-meter">
+        <p>Add <strong style="color:var(--text-primary)">{{ remaining|money }}</strong> more for free delivery.</p>
+        <div class="bar"><i style="width: {{ (subtotal / free_threshold * 100)|round(0, 'floor')|int }}%"></i></div>
+      </div>
+      {% else %}
+      <div class="ship-meter">
+        <p style="color:var(--accent-emerald); font-weight:600">&#10003; You've unlocked free delivery.</p>
+        <div class="bar"><i style="width:100%"></i></div>
+      </div>
+      {% endif %}
+
+      <div class="coupon-box">
+        <h4>Promo code</h4>
+        {% if coupon %}
+        <div class="coupon-applied">
+          <span class="coupon-tag">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+            {{ coupon.code }} &middot; {{ coupon.label }}
+          </span>
+          <form method="post" action="{{ url_for('cart.remove_coupon') }}">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button class="link-btn" type="submit">Remove</button>
+          </form>
+        </div>
+        {% else %}
+        <form class="coupon-form" method="post" action="{{ url_for('cart.apply_coupon') }}">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <input type="text" name="code" placeholder="Enter code" aria-label="Promo code" required>
+          <button class="btn-primary" type="submit" style="height:40px; padding:0 18px">Apply</button>
+        </form>
+        {% endif %}
+      </div>
+
+      <div class="coupon-box">
+        <h4>Gift card</h4>
+        {% if gift_card %}
+        <div class="coupon-applied">
+          <span class="coupon-tag">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+            {{ gift_card.code }} &middot; {{ gift_value|money }} applied
+          </span>
+          <form method="post" action="{{ url_for('cart.apply_gift_card') }}">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button class="link-btn" type="submit">Remove</button>
+          </form>
+        </div>
+        <p class="help-text">Balance left after this order: {{ (gift_card.balance - gift_value)|money }}.</p>
+        {% else %}
+        <form class="coupon-form" method="post" action="{{ url_for('cart.apply_gift_card') }}">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <input type="text" name="code" placeholder="Gift card code" aria-label="Gift card code">
+          <button class="btn-primary" type="submit" style="height:40px; padding:0 18px">Apply</button>
+        </form>
+        {% endif %}
+      </div>
+
+      {% if user.points > 0 %}
+      <div class="coupon-box">
+        <h4>Loyalty points</h4>
+        <p class="help-text" style="margin-bottom:10px">
+          You have <strong>{{ user.points }}</strong> points, worth
+          <strong>{{ (user.points / 100)|money }}</strong>. This order will earn
+          {{ points_hint }} more.
+        </p>
+        {% if points_redeem %}
+        <div class="coupon-applied">
+          <span class="coupon-tag">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+            {{ points_redeem }} points &middot; {{ points_value|money }} off
+          </span>
+          <form method="post" action="{{ url_for('cart.apply_points') }}">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="points" value="0">
+            <button class="link-btn" type="submit">Remove</button>
+          </form>
+        </div>
+        {% else %}
+        <form class="coupon-form" method="post" action="{{ url_for('cart.apply_points') }}">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <input type="number" name="points" value="0" min="0" max="{{ user.points }}" step="100"
+                 placeholder="Points to use" aria-label="Points to redeem">
+          <button class="btn-primary" type="submit" style="height:40px; padding:0 18px">Apply</button>
+        </form>
+        {% endif %}
+      </div>
+      {% endif %}
+
+      <div class="summary-line"><span class="k">Subtotal</span><span class="v">{{ subtotal|money }}</span></div>
+      {% if discount > 0 %}
+      <div class="summary-line discount"><span class="k">Discount ({{ coupon.code }})</span><span class="v">&minus;{{ discount|money }}</span></div>
+      {% endif %}
+      {% if points_value > 0 %}
+      <div class="summary-line discount"><span class="k">Points ({{ points_redeem }})</span><span class="v">&minus;{{ points_value|money }}</span></div>
+      {% endif %}
+      {% if gift_value > 0 %}
+      <div class="summary-line discount"><span class="k">Gift card ({{ gift_card.code }})</span><span class="v">&minus;{{ gift_value|money }}</span></div>
+      {% endif %}
+      <div class="summary-line {% if shipping_after == 0 %}free{% endif %}">
+        <span class="k">Shipping</span>
+        <span class="v">{% if shipping_after == 0 %}FREE{% else %}{{ shipping_after|money }}{% endif %}</span>
+      </div>
+      <div class="summary-line"><span class="k">Estimated tax (8%)</span><span class="v">{{ tax|money }}</span></div>
+      <div class="summary-total"><span>Total</span><span class="v">{{ total|money }}</span></div>
+
+      <a class="btn-primary" href="{{ url_for('cart.checkout') }}" style="width:100%; margin-top:20px; height:48px">
+        <svg viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+        Proceed to checkout
+      </a>
+    </div>
+  </div>
+</div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,177 @@
+﻿{% extends "base.html" %}
+{% from "admin/_nav.html" import nav with context %}
+{% block title %}Edit {{ product.name }} — Indian Store Admin{% endblock %}
+
+{% block content %}
+<div class="account-layout">
+  {{ nav('products') }}
+
+  <div class="panel panel-lg">
+    <div class="admin-head" style="margin-bottom:22px">
+      <div>
+        <h1 class="section-title" style="margin-bottom:4px">Edit product</h1>
+        <p class="muted" style="font-size:0.82rem">
+          <a href="{{ url_for('catalog.product_detail', slug=product.slug) }}">View on storefront</a>
+        </p>
+      </div>
+      <a class="btn-ghost" href="{{ url_for('admin.products') }}" style="height:40px">Back to list</a>
+    </div>
+
+    <form method="post" action="{{ url_for('admin.edit_product', product_id=product.id) }}">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div class="form-grid">
+        <div class="field full">
+          <label for="name">Name</label>
+          <input type="text" id="name" name="name" value="{{ product.name }}" required minlength="3">
+        </div>
+        <div class="field">
+          <label for="brand">Brand</label>
+          <input type="text" id="brand" name="brand" value="{{ product.brand }}" maxlength="80">
+        </div>
+        <div class="field">
+          <label for="sku">SKU</label>
+          <input type="text" id="sku" name="sku" value="{{ product.sku }}" maxlength="40">
+        </div>
+        <div class="field">
+          <label for="category_id">Category</label>
+          <select id="category_id" name="category_id">
+            <option value="">Uncategorised</option>
+            {% for c in categories %}
+            <option value="{{ c.id }}" {% if product.category_id == c.id %}selected{% endif %}>{{ c.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="field">
+          <label for="badge">Badge</label>
+          <input type="text" id="badge" name="badge" value="{{ product.badge }}" maxlength="40" placeholder="New, Limited...">
+        </div>
+        <div class="field">
+          <label for="price">Price (USD)</label>
+          <input type="number" id="price" name="price" step="0.01" min="0.01" required value="{{ product.price }}">
+        </div>
+        <div class="field">
+          <label for="compare_at">Compare-at price</label>
+          <input type="number" id="compare_at" name="compare_at" step="0.01" min="0"
+                 value="{{ product.compare_at if product.compare_at else '' }}">
+          <p class="help-text">Leave blank when the item is not on sale.</p>
+        </div>
+        <div class="field">
+          <label for="cost">Unit cost</label>
+          <input type="number" id="cost" name="cost" step="0.01" min="0" value="{{ product.cost }}">
+          <p class="help-text">Used for margin reporting.</p>
+        </div>
+        <div class="field">
+          <label for="stock">Stock on hand</label>
+          <input type="number" id="stock" name="stock" min="0" value="{{ product.stock }}">
+        </div>
+        <div class="field">
+          <label for="image_url">Image URL</label>
+          <input type="url" id="image_url" name="image_url" value="{{ product.image_url }}">
+        </div>
+        <div class="field full">
+          <label for="description">Description</label>
+          <textarea id="description" name="description">{{ product.description }}</textarea>
+        </div>
+        <div class="field full">
+          <label for="highlights">Highlights</label>
+          <textarea id="highlights" name="highlights" placeholder="One per line">{{ product.highlights }}</textarea>
+          <p class="help-text">Each line renders as a bullet on the product page.</p>
+        </div>
+      </div>
+
+      <div class="admin-grid-2" style="margin-top:8px">
+        <label class="switch-row">
+          <div>
+            <div class="t">Visible in the store</div>
+            <div class="s">Hidden products stay in past orders only.</div>
+          </div>
+          <span class="toggle">
+            <input type="checkbox" name="is_active" value="1" {% if product.is_active %}checked{% endif %}>
+            <span class="track"></span>
+          </span>
+        </label>
+        <label class="switch-row">
+          <div>
+            <div class="t">Featured product</div>
+            <div class="s">Highlighted at the top of the catalogue.</div>
+          </div>
+          <span class="toggle">
+            <input type="checkbox" name="is_featured" value="1" {% if product.is_featured %}checked{% endif %}>
+            <span class="track"></span>
+          </span>
+        </label>
+      </div>
+
+      <div style="display:flex; gap:10px; margin-top:22px">
+        <button class="btn-primary" type="submit">Save changes</button>
+        <a class="btn-ghost" href="{{ url_for('admin.products') }}" style="height:44px">Cancel</a>
+      </div>
+    </form>
+
+    <div class="panel" style="margin-top:22px">
+      <h2>Gallery</h2>
+      {% if not product.images %}
+      <p class="muted pad">No gallery shots yet. The first one you add becomes the hero image.</p>
+      {% else %}
+      <div class="table-wrap">
+        <table class="table">
+          <thead>
+            <tr><th>Shot</th><th>Image</th><th class="num">Hero</th><th class="num">Actions</th></tr>
+          </thead>
+          <tbody>
+            {% for shot in product.images %}
+            <tr>
+              <td>
+                {{ shot.caption or 'Untitled shot' }}
+                {% if shot.id == product.primary_image.id %}
+                <span class="badge">Hero</span>
+                {% endif %}
+              </td>
+              <td><img src="{{ shot.url }}" alt="{{ shot.caption }}" style="width:72px; height:52px; object-fit:cover; border-radius:8px"></td>
+              <td class="num">{{ 'Yes' if shot.is_primary else '-' }}</td>
+              <td class="num">
+                {% if not shot.is_primary %}
+                <form method="post" action="{{ url_for('admin.primary_image', image_id=shot.id) }}" style="display:inline">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                  <button class="btn-ghost" type="submit" style="height:32px">Make hero</button>
+                </form>
+                {% endif %}
+                <form method="post" action="{{ url_for('admin.delete_image', image_id=shot.id) }}" style="display:inline"
+                      onsubmit="return confirm('Remove this image from the gallery?')">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                  <button class="btn-ghost" type="submit" style="height:32px">Delete</button>
+                </form>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% endif %}
+
+      <form method="post" action="{{ url_for('admin.add_image', product_id=product.id) }}" style="margin-top:18px">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <div class="field">
+          <label for="gallery_url">Add an image</label>
+          <input type="url" id="gallery_url" name="url" placeholder="https://" required>
+        </div>
+        <div class="field">
+          <label for="gallery_caption">Caption</label>
+          <input type="text" id="gallery_caption" name="caption" placeholder="e.g. desk setup">
+        </div>
+        <label class="switch-row">
+          <div>
+            <div class="t">Use as the hero image</div>
+            <div class="s">Replaces whichever shot is the hero now.</div>
+          </div>
+          <span class="toggle">
+            <input type="checkbox" name="is_primary" value="1">
+            <span class="track"></span>
+          </span>
+        </label>
+        <button class="btn-primary" type="submit" style="margin-top:12px">Add to gallery</button>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,65 @@
+﻿{% extends "base.html" %}
+{% from "account/_nav.html" import nav with context %}
+{% block title %}Security — Indian Store{% endblock %}
+
+{% block content %}
+<div class="account-layout">
+  {{ nav('security') }}
+
+  <div style="display:grid; gap:16px; align-content:start">
+    <div class="panel panel-lg">
+      <h1 class="section-title" style="margin-bottom:8px">Change password</h1>
+      <p class="muted" style="font-size:0.84rem; margin-bottom:22px">
+        Changing your password signs out every other active session.
+      </p>
+
+      <form method="post" action="{{ url_for('account.security') }}" style="max-width:440px">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <div class="field">
+          <label for="current_password">Current password</label>
+          <input type="password" id="current_password" name="current_password" required autocomplete="current-password">
+        </div>
+        <div class="field">
+          <label for="new_password">New password</label>
+          <input type="password" id="new_password" name="new_password" required minlength="8" autocomplete="new-password">
+          <p class="help-text">Minimum 8 characters, including an uppercase letter and a number.</p>
+        </div>
+        <div class="field">
+          <label for="confirm_password">Confirm new password</label>
+          <input type="password" id="confirm_password" name="confirm_password" required minlength="8" autocomplete="new-password">
+        </div>
+        <button class="btn-primary" type="submit">Update password</button>
+      </form>
+    </div>
+
+    <div class="panel panel-lg">
+      <h2 style="font-size:1.05rem; font-weight:800; margin-bottom:16px">Account protection</h2>
+
+      <div class="method-row">
+        <div>
+          <div class="t">Two-factor authentication</div>
+          <div class="s">Require a one-time code from your authenticator app at sign-in.</div>
+        </div>
+        <span class="pill warn">Not enabled</span>
+      </div>
+      <div class="method-row">
+        <div>
+          <div class="t">Passkey</div>
+          <div class="s">Sign in with Face ID, Touch ID or a security key.</div>
+        </div>
+        <span class="pill muted">Coming soon</span>
+      </div>
+      <div class="method-row">
+        <div>
+          <div class="t">Recent sign-ins</div>
+          <div class="s">Sessions are stored server-side with a secure cookie.</div>
+        </div>
+        <form method="post" action="{{ url_for('auth.logout') }}" style="display:inline">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button class="mini-btn danger" type="submit">Sign out everywhere</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

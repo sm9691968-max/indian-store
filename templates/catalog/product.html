@@ -1,0 +1,512 @@
+{% extends "base.html" %}
+{% block title %}{{ product.name }} — Indian Store{% endblock %}
+
+{% block og_title %}{{ product.name }} — Indian Store{% endblock %}
+
+{% block json_ld %}
+{{ {
+  "@context": "https://schema.org",
+  "@type": "Product",
+  "name": product.name,
+  "image": product.gallery,
+  "description": product.description,
+  "sku": product.sku,
+  "brand": { "@type": "Brand", "name": product.brand },
+  "aggregateRating": {
+    "@type": "AggregateRating",
+    "ratingValue": product.rating,
+    "reviewCount": product.review_count
+  } if product.review_count else none,
+  "offers": {
+    "@type": "Offer",
+    "price": "%.2f"|format(product.price),
+    "priceCurrency": "USD",
+    "availability": "https://schema.org/InStock" if product.stock > 0 else "https://schema.org/OutOfStock",
+    "url": request.url
+  }
+} | json_ld }}
+{% endblock %}
+
+{% block content %}
+<nav class="crumb">
+  <a href="{{ url_for('catalog.index') }}">Store</a>
+  <span class="sep">/</span>
+  {% if product.category %}
+  <a href="{{ url_for('catalog.index', category=product.category.slug) }}">{{ product.category.name }}</a>
+  <span class="sep">/</span>
+  {% endif %}
+  <span>{{ product.name }}</span>
+</nav>
+
+<div class="detail-grid">
+  <div>
+    <div class="gallery" data-gallery>
+      <div class="detail-thumb fade-up gallery-main">
+        {% if product.badge %}<span class="product-badge">{{ product.badge }}</span>{% endif %}
+        <img id="galleryMain" src="{{ product.image }}" alt="{{ product.name }}"
+             {% if product.gallery|length > 1 %}data-gallery-main{% endif %}>
+        {% if product.gallery|length < 2 %}
+        <span class="thumb-glyph">{{ product.category.name[:1] if product.category else 'N' }}</span>
+        {% endif %}
+      </div>
+
+      {% if product.gallery|length > 1 %}
+      <div class="gallery-thumbs" role="tablist" aria-label="Product images">
+        {% for img in product.gallery %}
+        <button type="button" class="gallery-thumb {{ 'active' if loop.first else '' }}"
+                role="tab" aria-selected="{{ 'true' if loop.first else 'false' }}"
+                data-gallery-src="{{ img }}" data-gallery-alt="{{ product.name }} — view {{ loop.index }}">
+          <img src="{{ img }}" alt="" loading="lazy">
+        </button>
+        {% endfor %}
+      </div>
+      {% endif %}
+    </div>
+
+    {% if product.highlights or product.specs %}
+    <div class="panel" style="margin-top:18px">
+      {% if product.highlights %}
+      <h3 style="font-size:0.95rem; font-weight:800; margin-bottom:12px">Highlights</h3>
+      <ul style="list-style:none; display:grid; gap:9px">
+        {% for line in product.highlight_list %}
+        <li style="display:flex; gap:10px; font-size:0.86rem; color:var(--text-secondary)">
+          <span style="color:var(--accent-emerald); flex-shrink:0">&#10003;</span>
+          <span>{{ line }}</span>
+        </li>
+        {% endfor %}
+      </ul>
+      {% endif %}
+
+      {% if product.spec_rows %}
+      <h3 style="font-size:0.95rem; font-weight:800; margin:20px 0 12px">Specifications</h3>
+      <div class="spec-list">
+        {% for key, value in product.spec_rows %}
+        <div class="spec"><div class="k">{{ key }}</div><div class="v">{{ value }}</div></div>
+        {% endfor %}
+      </div>
+      {% endif %}
+    </div>
+    {% endif %}
+  </div>
+
+  <div class="fade-up">
+    <span class="product-cat">{{ product.brand }} &middot; {{ product.category.name if product.category else 'General' }}</span>
+    <h1 class="detail-title">{{ product.name }}</h1>
+    {% if product.sku %}<p class="muted" style="font-size:0.76rem; font-family:var(--font-mono)">SKU {{ product.sku }}</p>{% endif %}
+
+    <div class="rating-row" style="margin-top:8px">
+      <span class="stars">{{ product.rating|stars }}</span>
+      <a href="#reviews" class="rc" style="color:var(--text-muted); text-decoration:underline">
+        {{ '%.1f'|format(product.rating) }} from {{ product.review_count }} review{{ '' if product.review_count == 1 else 's' }}
+      </a>
+      {% if product.sold_count %}<span class="rc">&middot; {{ product.sold_count }} sold</span>{% endif %}
+    </div>
+
+    <div class="detail-price price-block">
+      {% if product.discount_pct %}<span class="pct-off">-{{ product.discount_pct }}% OFF</span>{% endif %}
+      <span class="price">
+        {{ product.price|money }}
+        {% if product.compare_at and product.compare_at > product.price %}<small>{{ product.compare_at|money }}</small>{% endif %}
+      </span>
+    </div>
+    <p class="muted" style="font-size:0.8rem">Inclusive of all taxes &middot; Free delivery over $150</p>
+
+    <div class="spec-list">
+      <div class="spec"><div class="k">Availability</div>
+        <div class="v" style="color: {{ '#34d399' if product.stock > product.low_stock_threshold else ('#fbbf24' if product.stock > 0 else '#fb7185') }}">
+          {% if product.stock > 0 %}In stock ({{ product.stock }}){% else %}Out of stock{% endif %}
+        </div>
+      </div>
+      <div class="spec"><div class="k">Dispatch</div><div class="v">Within 24 hours</div></div>
+      <div class="spec"><div class="k">Warranty</div><div class="v">{{ product.warranty_years }} year{{ '' if product.warranty_years == 1 else 's' }}</div></div>
+      <div class="spec"><div class="k">Returns</div><div class="v">30 days</div></div>
+    </div>
+
+    <p class="detail-desc">{{ product.description }}</p>
+
+    {% if product.variants %}
+    {% set first_available = product.in_stock_variants[0] if product.in_stock_variants else None %}
+    <div class="variant-block">
+      <label class="form-label" for="variantSelect">Choose an option</label>
+      <select id="variantSelect" name="variant_id" class="form-input" form="buyForm">
+        {% for v in product.variants %}
+        <option value="{{ v.id }}" data-price="{{ v.price }}" data-stock="{{ v.stock }}"
+                {% if not v.in_stock %}disabled{% elif first_available and v.id == first_available.id %}selected{% endif %}>
+          {{ v.name }}{% if v.price != product.price %} — {{ v.price|money }}{% endif %}{% if not v.in_stock %} (out of stock){% endif %}
+        </option>
+        {% endfor %}
+      </select>
+      <p class="muted sm" id="variantHint">
+        {% if first_available %}
+          {{ product.in_stock_variants|length }} of {{ product.variants|length }} option{{ '' if product.variants|length == 1 else 's' }} in stock.
+        {% else %}
+          Every option for this product is currently sold out.
+        {% endif %}
+      </p>
+    </div>
+    {% endif %}
+
+    {% if current_user %}
+      <div style="display:flex; gap:12px; align-items:center; margin-top:26px; flex-wrap:wrap">
+        {% if product.stock > 0 and (not product.variants or first_available) %}
+        <form action="{{ url_for('cart.add', product_id=product.id) }}" method="post" id="buyForm"
+              style="display:flex; gap:12px; align-items:center; flex-wrap:wrap">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          {% if product.variants %}
+          <input type="hidden" name="variant_id" id="variantIdInput">
+          {% endif %}
+          <div class="qty-stepper" data-stepper>
+            <button type="button" data-down aria-label="Decrease">&minus;</button>
+            <input type="number" name="quantity" id="buyQtyInput" value="1" min="1" max="{{ [product.stock, 20]|min }}" aria-label="Quantity">
+            <button type="button" data-up aria-label="Increase">+</button>
+          </div>
+          <button class="btn-primary" type="submit" style="flex:1; min-width:190px">
+            <svg viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle><path d="M1 1h4l2.68 13.39a2 0 0 0 2 1.61h9.72a2 0 0 0 2-1.61L23 6H6"></path></svg>
+            Add to cart
+          </button>
+        </form>
+        <form action="{{ url_for('cart.add', product_id=product.id) }}" method="post">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <input type="hidden" name="quantity" value="1">
+          {% if first_available %}<input type="hidden" name="variant_id" value="{{ first_available.id }}">{% endif %}
+          <button class="btn-ghost" name="save_for_later" value="1" type="submit" style="height:44px; gap:8px" title="Save for later">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path>
+            </svg>
+            Save for later
+          </button>
+        </form>
+        <form action="{{ url_for('catalog.add_to_compare', product_id=product.id) }}" method="post">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button class="btn-ghost {% if in_compare %}on{% endif %}" type="submit" style="height:44px; gap:8px" title="Add to comparison">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="3" y="3" width="7" height="7" rx="1"></rect><rect x="14" y="3" width="7" height="7" rx="1"></rect>
+              <rect x="3" y="14" width="7" height="7" rx="1"></rect><rect x="14" y="14" width="7" height="7" rx="1"></rect>
+            </svg>
+            {{ 'In compare' if in_compare else 'Compare' }}
+          </button>
+        </form>
+        <form action="{{ url_for('catalog.toggle_wishlist', product_id=product.id) }}" method="post">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button class="btn-ghost {% if in_wishlist %}on{% endif %}" type="submit" style="height:44px; gap:8px"
+                  title="Toggle wishlist">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                 style="{% if in_wishlist %}fill:var(--accent-rose);stroke:var(--accent-rose){% endif %}">
+              <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
+            </svg>
+            {{ 'Saved' if in_wishlist else 'Save' }}
+          </button>
+        </form>
+        {% else %}
+        <p class="muted" style="margin-top:26px">This item is currently out of stock. Check back soon.</p>
+        {% endif %}
+      </div>
+    {% else %}
+      <a class="btn-primary" href="{{ url_for('auth.login', next=request.full_path) }}" style="margin-top:26px; width:100%; height:48px">
+        Sign in to purchase
+      </a>
+    {% endif %}
+
+    <div class="alert-block">
+      <h4 class="form-label">Notify me</h4>
+      {% if current_user %}
+      <div class="alert-btns">
+        <form action="{{ url_for('catalog.create_alert', slug=product.slug) }}" method="post">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <input type="hidden" name="kind" value="restock">
+          <button class="btn-ghost btn-sm {{ 'on' if alerts|selectattr('kind', 'equalto', 'restock')|list else '' }}" type="submit">
+            Back in stock
+          </button>
+        </form>
+        <form action="{{ url_for('catalog.create_alert', slug=product.slug) }}" method="post">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <input type="hidden" name="kind" value="price">
+          <button class="btn-ghost btn-sm {{ 'on' if alerts|selectattr('kind', 'equalto', 'price')|list else '' }}" type="submit">
+            Price drop
+          </button>
+        </form>
+      </div>
+      {% if alerts %}
+      <p class="muted sm mt-sm">
+        You have {{ alerts|length }} active alert{{ '' if alerts|length == 1 else 's' }} on this product.
+        <a class="link" href="{{ url_for('account.alerts') }}">Manage</a>
+      </p>
+      {% endif %}
+      {% else %}
+      <p class="muted sm">Sign in to get an email when this item is back in stock or drops in price.</p>
+      <a class="btn-ghost btn-sm mt-sm" href="{{ url_for('auth.login', next=request.full_path) }}">Sign in</a>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+{# ---------------- Reviews ---------------- #}
+<div class="section-divider"></div>
+
+<div id="questions">
+  <h2 class="section-title" style="margin-bottom:24px">
+    Questions &amp; answers
+    <span class="count-pill">{{ questions|length }}</span>
+  </h2>
+
+  {% if current_user %}
+  <div class="panel" style="margin-bottom:22px">
+    <h3 style="font-size:1rem; font-weight:800; margin-bottom:12px">Ask the Indian Store team</h3>
+    <form class="stack" method="post" action="{{ url_for('catalog.ask_question', slug=product.slug) }}">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <textarea name="question" class="form-input" rows="3" required minlength="10"
+                placeholder="Is this compatible with the older model? Does it ship with a cable?"></textarea>
+      <p class="help-text">At least 10 characters. We answer publicly and email you when we do.</p>
+      <button class="btn-primary" type="submit" style="align-self:start">Ask question</button>
+    </form>
+  </div>
+  {% else %}
+  <div class="panel" style="margin-bottom:22px; display:flex; align-items:center; justify-content:space-between; gap:18px; flex-wrap:wrap">
+    <p class="muted" style="font-size:0.88rem">Sign in to ask a question about this product.</p>
+    <a class="btn-primary" href="{{ url_for('auth.login', next=request.full_path) }}">Sign in to ask</a>
+  </div>
+  {% endif %}
+
+  {% if questions %}
+  <div class="qa-list">
+    {% for q in questions %}
+    <article class="panel qa-card {{ 'answered' if q.is_answered }}">
+      <div class="qa-meta">
+        <span class="review-av">{{ q.user.initials if q.user else '?' }}</span>
+        <div>
+          <div class="review-who">{{ q.user.full_name if q.user else 'Guest' }}</div>
+          <div class="review-when">{{ q.created_at.strftime('%d %b %Y') }}</div>
+        </div>
+        {% if q.is_answered %}<span class="verified-tag">Answered</span>{% endif %}
+      </div>
+      <p class="qa-text">{{ q.question }}</p>
+      {% if q.is_answered %}
+      <div class="qa-answer">
+        <strong>Indian Store support{% if q.answered_by %} · {{ q.answered_by_name }}{% endif %}</strong>
+        <p>{{ q.answer }}</p>
+      </div>
+      {% endif %}
+    </article>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="empty">
+    <div class="ico">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><path d="M9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3"></path><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+    </div>
+    <h3>No questions yet</h3>
+    <p>Be the first to ask about {{ product.name }}.</p>
+  </div>
+  {% endif %}
+</div>
+
+<div class="section-divider"></div>
+
+<div id="reviews">
+  <h2 class="section-title" style="margin-bottom:24px">
+    Customer reviews
+    <span class="count-pill">{{ product.review_count }}</span>
+  </h2>
+
+  {% if breakdown %}
+  <div class="panel review-summary">
+    <div>
+      <div class="rating-big-row">
+        <span class="rating-big">{{ '%.1f'|format(product.rating) }}</span>
+        <span class="rating-out-of">/ 5</span>
+      </div>
+      <div class="stars" style="font-size:1.1rem">{{ product.rating|stars }}</div>
+      <p class="muted" style="font-size:0.78rem; margin-top:6px">
+        {{ product.review_count }} verified review{{ '' if product.review_count == 1 else 's' }}
+      </p>
+    </div>
+    <div class="rating-bars">
+      {% for stars in [5, 4, 3, 2, 1] %}
+      <div class="rating-bar-row">
+        <span class="lbl">{{ stars }}&#9733;</span>
+        <span class="bar"><i style="width: {{ breakdown[stars]|pct_of(product.review_count) }}%"></i></span>
+        <span class="n">{{ breakdown[stars] }}</span>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
+  {% if current_user %}
+  <div class="panel" style="margin-bottom:26px">
+    <h3 style="font-size:1rem; font-weight:800; margin-bottom:14px">
+      {{ 'Update your review' if my_review else 'Write a review' }}
+    </h3>
+    <form class="review-form" method="post" action="{{ url_for('catalog.submit_review', slug=product.slug) }}">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div class="field" style="margin-bottom:0">
+        <label>Your rating</label>
+        <div class="star-input">
+          {% for value in [5, 4, 3, 2, 1] %}
+          <input type="radio" name="rating" id="star{{ value }}" value="{{ value }}"
+                 {% if my_review and my_review.rating == value %}checked{% elif not my_review and value == 5 %}checked{% endif %}>
+          <label for="star{{ value }}" title="{{ value }} stars">&#9733;</label>
+          {% endfor %}
+        </div>
+      </div>
+      <div class="field">
+        <label for="review_title">Headline</label>
+        <input type="text" id="review_title" name="title" maxlength="140"
+               placeholder="Sum it up in a few words" value="{{ my_review.title if my_review else '' }}">
+      </div>
+      <div class="field">
+        <label for="review_body">Your review</label>
+        <textarea id="review_body" name="body" required minlength="10"
+                  placeholder="How does it perform day to day?">{{ my_review.body if my_review else '' }}</textarea>
+        <p class="help-text">At least 10 characters. This updates the product rating immediately.</p>
+      </div>
+      <button class="btn-primary" type="submit" style="align-self:start">
+        {{ 'Update review' if my_review else 'Publish review' }}
+      </button>
+    </form>
+  </div>
+  {% else %}
+  <div class="panel" style="margin-bottom:26px; display:flex; align-items:center; justify-content:space-between; gap:18px; flex-wrap:wrap">
+    <p class="muted" style="font-size:0.88rem">Sign in to share your experience with this product.</p>
+    <a class="btn-primary" href="{{ url_for('auth.login', next=request.full_path) }}">Sign in to review</a>
+  </div>
+  {% endif %}
+
+  {% if reviews %}
+    {% for r in reviews %}
+    <div class="panel" style="margin-bottom:12px">
+      <div class="review-item">
+        <div class="review-head">
+          <div class="review-av">{{ r.user.initials }}</div>
+          <div>
+            <div class="review-who">{{ r.user.full_name }}</div>
+            <div class="review-when">
+              {{ r.created_at.strftime('%d %b %Y') }}
+              {% if r.updated_at and r.updated_at != r.created_at %} &middot; edited{% endif %}
+            </div>
+          </div>
+          {% if r.is_verified %}
+          <span class="verified-tag">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
+            Verified purchase
+          </span>
+          {% endif %}
+        </div>
+        <div class="stars" style="margin-bottom:7px">{{ r.rating|stars }}</div>
+        {% if r.title %}<div class="review-title">{{ r.title }}</div>{% endif %}
+        <div class="review-body">{{ r.body }}</div>
+        {% if current_user and r.user_id == current_user.id %}
+        <form method="post" action="{{ url_for('catalog.delete_review', slug=product.slug, review_id=r.id) }}"
+              style="margin-top:14px" data-confirm="Delete your review? This cannot be undone.">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button class="link-btn" type="submit">Delete my review</button>
+        </form>
+        {% endif %}
+      </div>
+    </div>
+    {% endfor %}
+  {% else %}
+  <div class="empty">
+    <div class="ico">
+      <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+    </div>
+    <h3>No reviews yet</h3>
+    <p>Be the first to tell other buyers how this performs.</p>
+  </div>
+  {% endif %}
+</div>
+
+{% if related %}
+<div class="section-divider"></div>
+<h2 class="section-title" style="margin-bottom:20px">You might also like</h2>
+<div class="product-grid">
+  {% for p in related %}
+  <article class="product-card">
+    <a class="product-thumb" href="{{ url_for('catalog.product_detail', slug=p.slug) }}">
+      {% if p.badge %}<span class="product-badge">{{ p.badge }}</span>{% endif %}
+      {% if p.stock == 0 %}<span class="out-chip">Sold out</span>{% endif %}
+      {% if p.image_url %}<img src="{{ p.image_url }}" alt="{{ p.name }}" loading="lazy">
+      {% else %}<span class="thumb-glyph">{{ p.category.name[:1] if p.category else 'N' }}</span>{% endif %}
+    </a>
+    {% if current_user %}
+    <form action="{{ url_for('catalog.toggle_wishlist', product_id=p.id) }}" method="post" data-wishlist>
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <button class="wish-btn {% if p.id in wish_ids %}on{% endif %}" title="Save to wishlist" aria-label="Save {{ p.name }}">
+        <svg viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
+      </button>
+    </form>
+    {% endif %}
+    <div class="product-body">
+      <span class="product-cat">{{ p.brand }}</span>
+      <a class="product-name" href="{{ url_for('catalog.product_detail', slug=p.slug) }}">{{ p.name }}</a>
+      <div class="rating-row">
+        <span class="stars">{{ p.rating|stars }}</span>
+        <span class="rc">{{ p.review_count }} reviews</span>
+      </div>
+      <div class="product-foot">
+        <span class="price">{{ p.price|money }}</span>
+        {% if current_user %}
+        <form action="{{ url_for('cart.add', product_id=p.id) }}" method="post">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <input type="hidden" name="quantity" value="1">
+          <button class="add-btn" type="submit" {% if p.stock == 0 %}disabled{% endif %}>
+            <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+          </button>
+        </form>
+        {% endif %}
+      </div>
+    </div>
+  </article>
+  {% endfor %}
+</div>
+{% endif %}
+
+<script>
+  // Product gallery: swap the hero image when a thumbnail is picked.
+  document.querySelectorAll('[data-gallery]').forEach((gallery) => {
+    const main = gallery.querySelector('[data-gallery-main]');
+    if (!main) return;
+    gallery.querySelectorAll('.gallery-thumb').forEach((thumb) => {
+      thumb.addEventListener('click', () => {
+        main.src = thumb.dataset.gallerySrc;
+        main.alt = thumb.dataset.galleryAlt || main.alt;
+        gallery.querySelectorAll('.gallery-thumb').forEach((other) => {
+          other.classList.toggle('active', other === thumb);
+          other.setAttribute('aria-selected', other === thumb ? 'true' : 'false');
+        });
+      });
+    });
+  });
+
+  // Variant picker: mirror the choice into the add-to-cart form and cap quantity.
+  const variantSelect = document.getElementById('variantSelect');
+  const variantInput = document.getElementById('variantIdInput');
+  const qtyInput = document.getElementById('buyQtyInput');
+  if (variantSelect && variantInput) {
+    const syncVariant = () => {
+      const option = variantSelect.options[variantSelect.selectedIndex];
+      if (!option || option.disabled) return;
+      variantInput.value = option.value;
+
+      // Each variant stocks separately, so the stepper must respect the chosen one.
+      const stock = parseInt(option.dataset.stock || '0', 10);
+      const ceiling = Math.min(stock || 0, 20);
+      if (qtyInput && ceiling > 0) {
+        qtyInput.max = String(ceiling);
+        if (parseInt(qtyInput.value, 10) > ceiling) qtyInput.value = String(ceiling);
+      }
+
+      const price = option.dataset.price;
+      const hint = document.getElementById('variantHint');
+      if (hint) {
+        const label = option.textContent.trim().split('—')[0].trim();
+        hint.textContent = price
+          ? `${label} · ${price} · up to ${ceiling} in stock.`
+          : `${label} · up to ${ceiling} in stock.`;
+      }
+    };
+    variantSelect.addEventListener('change', syncVariant);
+    syncVariant();
+  }
+</script>
+{% endblock %}

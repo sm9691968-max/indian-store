@@ -1,0 +1,111 @@
+﻿{% extends "base.html" %}
+{% from "account/_nav.html" import nav with context %}
+{% block title %}Addresses — Indian Store{% endblock %}
+
+{% block content %}
+<div class="account-layout">
+  {{ nav('addresses') }}
+
+  <div style="display:grid; gap:16px; align-content:start">
+    <div class="panel panel-lg">
+      <h1 class="section-title" style="margin-bottom:8px">Saved addresses</h1>
+      <p class="muted" style="font-size:0.84rem; margin-bottom:22px">
+        Your default address is pre-filled at checkout.
+      </p>
+
+      {% if user.addresses %}
+      <div class="address-list">
+        {% for a in user.addresses %}
+        <div class="address-card {% if a.is_default %}is-default{% endif %}">
+          <div>
+            <div style="display:flex; align-items:center; gap:10px; margin-bottom:6px; flex-wrap:wrap">
+              <strong style="font-size:0.92rem">{{ a.label }}</strong>
+              {% if a.is_default %}<span class="default-tag">Default</span>{% endif %}
+            </div>
+            <p style="font-size:0.85rem; color:var(--text-secondary)">
+              {{ a.full_name }}<br>{{ a.one_line }}
+            </p>
+            {% if a.phone %}
+            <p style="font-size:0.8rem; color:var(--text-muted); margin-top:4px">{{ a.phone }}</p>
+            {% endif %}
+          </div>
+          <div class="addr-actions">
+            {% if not a.is_default %}
+            <form method="post" action="{{ url_for('account.make_default_address', address_id=a.id) }}">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <button class="mini-btn" type="submit">Make default</button>
+            </form>
+            {% endif %}
+            <form method="post" action="{{ url_for('account.delete_address', address_id=a.id) }}"
+                  data-confirm="Remove this address?">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <button class="mini-btn danger" type="submit">Remove</button>
+            </form>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+      {% else %}
+      <div class="empty" style="padding:36px 20px; margin-bottom:26px">
+        <h3 style="font-size:1rem">No saved addresses</h3>
+        <p style="font-size:0.85rem">Add one below to check out faster next time.</p>
+      </div>
+      {% endif %}
+    </div>
+
+    <div class="panel panel-lg">
+      <h2 style="font-size:1.05rem; font-weight:800; margin-bottom:16px">Add a new address</h2>
+      <form method="post" action="{{ url_for('account.addresses') }}">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <div class="form-grid">
+          <div class="field">
+            <label for="label">Label</label>
+            <input type="text" id="label" name="label" placeholder="Home, Office..." maxlength="40">
+          </div>
+          <div class="field">
+            <label for="full_name">Recipient name</label>
+            <input type="text" id="full_name" name="full_name" required autocomplete="name">
+          </div>
+          <div class="field full">
+            <label for="line1">Street address</label>
+            <input type="text" id="line1" name="line1" required autocomplete="address-line1">
+          </div>
+          <div class="field full">
+            <label for="line2">Apartment, suite (optional)</label>
+            <input type="text" id="line2" name="line2" autocomplete="address-line2">
+          </div>
+          <div class="field">
+            <label for="city">City</label>
+            <input type="text" id="city" name="city" required autocomplete="address-level2">
+          </div>
+          <div class="field">
+            <label for="postal">Postal code</label>
+            <input type="text" id="postal" name="postal" required autocomplete="postal-code">
+          </div>
+          <div class="field">
+            <label for="country">Country</label>
+            <input type="text" id="country" name="country" value="United States" autocomplete="country-name">
+          </div>
+          <div class="field">
+            <label for="phone">Phone (optional)</label>
+            <input type="tel" id="phone" name="phone" autocomplete="tel">
+          </div>
+        </div>
+
+        <label class="switch-row" style="margin-top:6px">
+          <div>
+            <div class="t">Use as my default address</div>
+            <div class="s">We will preselect it at checkout.</div>
+          </div>
+          <span class="toggle">
+            <input type="checkbox" name="is_default" value="1">
+            <span class="track"></span>
+          </span>
+        </label>
+
+        <button class="btn-primary" type="submit" style="margin-top:20px">Save address</button>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

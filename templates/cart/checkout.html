@@ -1,0 +1,147 @@
+{% extends "base.html" %}
+{% block title %}Checkout — Indian Store{% endblock %}
+
+{% block content %}
+<nav class="crumb">
+  <a href="{{ url_for('cart.view') }}">Cart</a>
+  <span class="sep">/</span>
+  <span>Checkout</span>
+</nav>
+
+<h1 class="section-title" style="margin-bottom:24px">Secure checkout</h1>
+
+<div class="cart-layout">
+  <form class="panel" method="post" action="{{ url_for('cart.checkout') }}">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <h2 style="font-size:1.05rem; font-weight:800; margin-bottom:16px">Shipping address</h2>
+
+    {% if current_user.addresses %}
+    <div class="filter-group" style="padding-top:0">
+      <h4>Use a saved address</h4>
+      <div class="radio-list">
+        {% for a in current_user.addresses %}
+        <a class="{% if a.is_default %}active{% endif %}"
+           href="{{ url_for('cart.checkout', address=a.id) }}">
+          {{ a.label }} &middot; {{ a.line1 }}, {{ a.city }}
+        </a>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+
+    <div class="field">
+      <label for="shipping_name">Full name</label>
+      <input type="text" id="shipping_name" name="shipping_name" value="{{ form.shipping_name }}" required autocomplete="name">
+    </div>
+    <div class="field">
+      <label for="shipping_address">Street address</label>
+      <input type="text" id="shipping_address" name="shipping_address" value="{{ form.shipping_address }}" required autocomplete="address-line1">
+    </div>
+    <div class="field">
+      <label for="shipping_address2">Apartment, suite (optional)</label>
+      <input type="text" id="shipping_address2" name="shipping_address2" value="{{ form.shipping_address2 }}" autocomplete="address-line2">
+    </div>
+    <div class="form-grid">
+      <div class="field">
+        <label for="shipping_city">City</label>
+        <input type="text" id="shipping_city" name="shipping_city" value="{{ form.shipping_city }}" required autocomplete="address-level2">
+      </div>
+      <div class="field">
+        <label for="shipping_postal">Postal code</label>
+        <input type="text" id="shipping_postal" name="shipping_postal" value="{{ form.shipping_postal }}" required autocomplete="postal-code">
+      </div>
+    </div>
+    <div class="field">
+      <label for="shipping_phone">Contact number (optional)</label>
+      <input type="tel" id="shipping_phone" name="shipping_phone" value="{{ form.shipping_phone }}" autocomplete="tel">
+    </div>
+    <div class="field">
+      <label for="note">Delivery notes (optional)</label>
+      <textarea id="note" name="note" placeholder="Gate code, buzzer, drop-off preference...">{{ form.note }}</textarea>
+    </div>
+
+    <h2 style="font-size:1.05rem; font-weight:800; margin:10px 0 12px">Payment method</h2>
+    <div class="pay-options">
+      {% for value, title, sub in [
+        ('Card', 'Credit / debit card', 'Visa, Mastercard, Amex — simulated'),
+        ('Wallet', 'Indian Store Wallet', 'One-tap checkout with stored cards'),
+        ('COD', 'Cash on delivery', 'Pay the courier at your door')
+      ] %}
+      <label class="pay-option">
+        <input type="radio" name="payment_method" value="{{ value }}"
+               {% if form.payment_method == value %}checked{% endif %}>
+        <span>
+          <span class="t">{{ title }}</span><br>
+          <span class="s">{{ sub }}</span>
+        </span>
+      </label>
+      {% endfor %}
+    </div>
+
+    <button class="btn-primary" type="submit" style="width:100%; height:48px">
+      <svg viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+      Place order — {{ total|money }}
+    </button>
+  </form>
+
+  <div style="display:grid; gap:18px; position:sticky; top:96px">
+    <div class="panel">
+      <h2 style="font-size:1.05rem; font-weight:800; margin-bottom:14px">Your items</h2>
+      {% for item in current_user.cart_items %}
+      <div class="order-item" style="padding:10px 0">
+        <div class="mini">
+          {% if item.product.image_url %}<img src="{{ item.product.image_url }}" alt="">
+          {% else %}{{ item.product.category.name[:1] if item.product.category else 'N' }}{% endif %}
+        </div>
+        <div>
+          <div class="nm">{{ item.product.name }}</div>
+          <div class="qt">Qty {{ item.quantity }}</div>
+        </div>
+        <div class="pr">{{ item.line_total|money }}</div>
+      </div>
+      {% endfor %}
+    </div>
+
+    <div class="panel">
+      <h2 style="font-size:1.05rem; font-weight:800; margin-bottom:12px">Summary</h2>
+
+      <div class="coupon-box" style="margin-top:0">
+        <h4>Promo code</h4>
+        {% if coupon %}
+        <div class="coupon-applied">
+          <span class="coupon-tag">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+            {{ coupon.code }} &middot; {{ coupon.label }}
+          </span>
+          <form method="post" action="{{ url_for('cart.remove_coupon') }}">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button class="link-btn" type="submit">Remove</button>
+          </form>
+        </div>
+        {% else %}
+        <form class="coupon-form" method="post" action="{{ url_for('cart.apply_coupon') }}">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <input type="text" name="code" placeholder="Enter code" aria-label="Promo code" required>
+          <button class="btn-primary" type="submit" style="height:40px; padding:0 18px">Apply</button>
+        </form>
+        {% endif %}
+      </div>
+
+      <div class="summary-line"><span class="k">Subtotal</span><span class="v">{{ subtotal|money }}</span></div>
+      {% if discount > 0 %}
+      <div class="summary-line discount"><span class="k">Discount ({{ coupon.code }})</span><span class="v">&minus;{{ discount|money }}</span></div>
+      {% endif %}
+      <div class="summary-line {% if shipping_after == 0 %}free{% endif %}">
+        <span class="k">Shipping</span>
+        <span class="v">{% if shipping_after == 0 %}FREE{% else %}{{ shipping_after|money }}{% endif %}</span>
+      </div>
+      <div class="summary-line"><span class="k">Tax</span><span class="v">{{ tax|money }}</span></div>
+      <div class="summary-total"><span>Total</span><span class="v">{{ total|money }}</span></div>
+      <p class="muted" style="font-size:0.74rem; margin-top:14px; display:flex; gap:7px; align-items:center">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+        Demo checkout — no real payment is processed.
+      </p>
+    </div>
+  </div>
+</div>
+{% endblock %}

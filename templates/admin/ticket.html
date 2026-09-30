@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% block title %}{{ ticket.subject }} — Indian Store admin{% endblock %}
+
+{% block content %}
+<section class="page-head">
+  <div class="wrap narrow">
+    <nav class="crumbs"><a href="{{ url_for('admin.tickets') }}">Support</a> / {{ ticket.reference }}</nav>
+    <div class="page-head-row">
+      <div>
+        <h1>{{ ticket.subject }}</h1>
+        <p class="muted">
+          <span class="mono">{{ ticket.reference }}</span> ·
+          {{ ticket.user.full_name if ticket.user else 'Deleted user' }} ·
+          {{ ticket.category }} · opened {{ ticket.created_at|ts }}
+        </p>
+      </div>
+      <form method="post" action="{{ url_for('admin.ticket_status', ticket_id=ticket.id) }}" class="inline-form">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <select name="status" class="form-input sm" onchange="this.form.submit()">
+          {% for s in ['open', 'pending', 'resolved', 'closed'] %}
+          <option value="{{ s }}" {% if s == ticket.status %}selected{% endif %}>{{ s }}</option>
+          {% endfor %}
+        </select>
+      </form>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap narrow">
+    {% if ticket.order %}
+    <div class="panel slim">
+      <div class="panel-head">
+        <h3>Linked order</h3>
+        <a class="link sm" href="{{ url_for('cart.order_detail', reference=ticket.order.reference) }}">{{ ticket.order.reference }} →</a>
+      </div>
+      <dl class="spec-list compact">
+        <div><dt>Status</dt><dd>{{ ticket.order.status }}</dd></div>
+        <div><dt>Total</dt><dd>{{ ticket.order.total|usd }}</dd></div>
+        <div><dt>Ship to</dt><dd>{{ ticket.order.shipping_name }}, {{ ticket.order.shipping_city }}</dd></div>
+      </dl>
+    </div>
+    {% endif %}
+
+    <div class="panel">
+      <h3>Conversation</h3>
+      <div class="thread">
+        {% for m in ticket.messages %}
+        <article class="msg {{ 'from-staff' if m.author and m.author.is_admin else 'from-user' }}">
+          <div class="msg-head">
+            <strong>{{ m.author.full_name if m.author else 'Indian Store' }}</strong>
+            {% if m.author and m.author.is_admin %}<span class="tag tag-blue sm">staff</span>{% endif %}
+            <span class="muted sm">{{ m.created_at|ts }}</span>
+          </div>
+          <div class="msg-body">{{ m.body }}</div>
+        </article>
+        {% endfor %}
+      </div>
+
+      <form method="post" action="{{ url_for('admin.reply_ticket', ticket_id=ticket.id) }}" class="stack mt-lg">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <label class="form-label" for="message">Reply to {{ ticket.user.email if ticket.user else 'customer' }}</label>
+        <textarea id="message" name="message" class="form-input" rows="5" required
+                  placeholder="Explain the resolution, offer a replacement, or ask for more detail…"></textarea>
+        <div class="action-row">
+          <button class="btn btn-primary" type="submit">Send reply</button>
+          <span class="muted sm">The customer is emailed a copy.</span>
+        </div>
+      </form>
+    </div>
+  </div>
+</section>
+{% endblock %}
