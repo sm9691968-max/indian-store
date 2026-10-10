@@ -105,6 +105,94 @@
   100% { transform: scale(1) rotate(0); }
 }
 
+/* ---- GSAP choreography support (CSS-only fallbacks + helper hooks) ---- */
+
+/* Orbit blobs are driven by the scroll (scrub) instead of the idle loop. */
+.js-motion .site-orb { animation: none; }
+
+/* Masked hero line reveal: each line clips its own overflow, the inner
+   block slides up inside the mask. */
+.hl-line {
+  display: block;
+  overflow: hidden;
+  padding-bottom: 0.09em;
+  margin-bottom: -0.09em;
+}
+.hl-inner { display: inline-block; will-change: transform; }
+
+/* Slow gradient drift on the italic hero accent (warm stops only). */
+.hero h1 em {
+  background-image: linear-gradient(100deg,
+    #f2bd5a 0%, #e5a83b 34%, #e2593e 66%, #f2bd5a 100%);
+  background-size: 220% auto;
+  -webkit-background-clip: text; background-clip: text;
+  animation: gradShift 7s ease-in-out infinite alternate;
+}
+@keyframes gradShift {
+  from { background-position: 0% 50%; }
+  to   { background-position: 100% 50%; }
+}
+
+/* Light sweep across primary buttons on hover. */
+.btn-primary {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+}
+.btn-primary::after {
+  content: '';
+  position: absolute;
+  top: -25%; bottom: -25%;
+  left: -35%;
+  width: 24%;
+  background: rgba(255, 244, 214, 0.55);
+  filter: blur(7px);
+  transform: translateX(0) skewX(-18deg);
+  transition: transform 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+  pointer-events: none;
+  z-index: 0;
+}
+.btn-primary > * { position: relative; z-index: 1; }
+.btn-primary:hover::after { transform: translateX(620%) skewX(-18deg); }
+
+/* Heart pop when a wishlist item is saved (classed by JS). */
+.wish-btn.on svg { animation: heartPop 0.45s cubic-bezier(0.34, 1.56, 0.64, 1); }
+@keyframes heartPop {
+  0%   { transform: scale(1); }
+  45%  { transform: scale(1.4) rotate(-6deg); }
+  100% { transform: scale(1) rotate(0); }
+}
+
+/* Deal-card hover life: thumbnail zooms, tag leans forward. */
+.deal-card .deal-thumb img { transition: transform 0.5s cubic-bezier(0.16, 1, 0.3, 1); }
+.deal-card:hover .deal-thumb img { transform: scale(1.1); }
+.deal-tag { transition: transform 0.25s ease; }
+.deal-card:hover .deal-tag { transform: translateY(-2px) rotate(-4deg) scale(1.12); }
+
+/* Product-card hover: lift, glow, thumbnail zoom. */
+.product-card {
+  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1),
+              border-color 0.25s ease, box-shadow 0.3s ease;
+}
+.product-card:hover {
+  transform: translateY(-5px);
+  border-color: var(--border-hover);
+  box-shadow: 0 20px 44px -20px rgba(0, 0, 0, 0.55);
+}
+.product-thumb img { transition: transform 0.55s cubic-bezier(0.16, 1, 0.3, 1); }
+.product-card:hover .product-thumb img { transform: scale(1.07); }
+
+/* When GSAP tilt is live it owns the transform — keep only border/glow. */
+.product-grid.pptilt .product-card {
+  transition: border-color 0.25s ease, box-shadow 0.3s ease, transform 0.06s linear;
+}
+.product-grid.pptilt .product-card:hover { transform: none; }
+
+/* Magnetic tiles need snappy transform updates instead of the 0.16s ease. */
+.js-motion .cat-tile {
+  transition: box-shadow 0.3s ease, border-color 0.25s ease, transform 0.06s linear;
+}
+
 /* Honor the operating-system motion preference */
 @media (prefers-reduced-motion: reduce) {
   #scrollProgress { display: none; }
@@ -114,4 +202,12 @@
   .deal-track .deal-card,
   .cat-rack .cat-tile { animation: none !important; }
   .cart-bump svg { animation: none; }
+  .site-orb { animation: none; }
+  .hero h1 em { animation: none; }
+  .wish-btn.on svg { animation: none; }
+  .btn-primary::after { display: none; }
+  .deal-card:hover .deal-thumb img,
+  .product-card:hover,
+  .product-card:hover .product-thumb img,
+  .deal-card:hover .deal-tag { transform: none; }
 }

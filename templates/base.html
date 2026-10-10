@@ -31,6 +31,8 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='css/site.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/extended.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/animations.css') }}">
+  <script defer src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/ScrollTrigger.min.js"></script>
   <script>
     if (localStorage.getItem('indian-store-theme') === 'light') {
       document.documentElement.setAttribute('data-theme', 'light');
@@ -383,6 +385,121 @@ sync();
       document.querySelectorAll('.add-btn').forEach((btn) => {
         btn.addEventListener('click', bumpCart);
       });
+    })();
+
+    // Max-motion layer: GSAP + ScrollTrigger choreography — masked hero line
+    // reveal, scroll-linked parallax on the orbs, staggered section reveals,
+    // 3D tilt on product cards and a magnetic pull on tiles. Everything is
+    // skipped for reduced-motion users or when the CDN is unreachable; the
+    // CSS entrances above still carry the page in those cases.
+    (function uiGsap() {
+      const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      const boot = () => {
+        if (reduce || !window.gsap || !window.ScrollTrigger) return;
+        gsap.registerPlugin(ScrollTrigger);
+        document.documentElement.classList.add('js-motion');
+
+        gsap.matchMedia().add('(prefers-reduced-motion: no-preference)', () => {
+          // 1) Hero headline — masked line-by-line reveal
+          document.querySelectorAll('.hero h1').forEach((h1) => {
+            if (!/<\s*br/i.test(h1.innerHTML)) return;
+            h1.setAttribute('aria-label', h1.textContent.trim());
+            const wrapped = h1.innerHTML
+              .split(/<\s*br\s*\/?\s*>/i)
+              .map((ln) => ln.trim())
+              .filter(Boolean)
+              .map((ln) => '<span class="hl-line" aria-hidden="true"><span class="hl-inner">' + ln + '</span></span>')
+              .join('');
+            h1.innerHTML = wrapped;
+            gsap.from(h1.querySelectorAll('.hl-inner'), {
+              yPercent: 118, rotate: 3, opacity: 0,
+              duration: 0.9, stagger: 0.1, delay: 0.12, ease: 'expo.out',
+            });
+          });
+
+          // 2) Scroll-linked parallax on the fixed background orbs
+          const orbs = gsap.utils.toArray('.site-orb');
+          if (orbs.length) {
+            gsap.to(orbs, {
+              y: (i) => -50 - i * 38,
+              x: (i) => (i % 2 ? -24 : 20),
+              scale: 1.05, ease: 'none',
+              scrollTrigger: { trigger: document.body, start: 'top top', end: 'bottom bottom', scrub: 0.8 },
+            });
+          }
+
+          // 3) Section-level reveals on scroll
+          [
+            { sel: '.deal-strip .deal-head', y: 18 },
+            { sel: '.toolbar', y: 16 },
+            { sel: 'aside.panel', y: 20 },
+            { sel: '.pagination', y: 16 },
+            { sel: '.footer-inner', y: 14 },
+          ].forEach(({ sel, y }) => {
+            gsap.utils.toArray(sel).forEach((el) => {
+              gsap.from(el, {
+                y, opacity: 0, duration: 0.6, ease: 'power2.out',
+                scrollTrigger: { trigger: el, start: 'top 92%', once: true },
+              });
+            });
+          });
+
+          // 4) Staggered card cascades tied to scroll, not page load
+          const grid = document.querySelector('.product-grid');
+          const catRack = document.querySelector('.cat-rack');
+          const dealTrack = document.querySelector('.deal-track');
+          if (grid) gsap.from(gsap.utils.toArray(grid.children), {
+            y: 24, opacity: 0, duration: 0.55, ease: 'power2.out', stagger: 0.05,
+            scrollTrigger: { trigger: grid, start: 'top 90%', once: true },
+          });
+          if (catRack) gsap.from('.cat-rack .cat-tile', {
+            y: 26, opacity: 0, duration: 0.6, ease: 'expo.out', stagger: 0.07,
+            scrollTrigger: { trigger: catRack, start: 'top 92%', once: true },
+          });
+          if (dealTrack) gsap.from('.deal-track > .deal-card', {
+            y: 20, opacity: 0, duration: 0.5, ease: 'power2.out', stagger: 0.04,
+            scrollTrigger: { trigger: dealTrack, start: 'top 92%', once: true },
+          });
+
+          // 5) 3D tilt on product cards (desktop only — no hover on touch)
+          if (grid && window.matchMedia('(min-width: 900px)').matches) {
+            grid.classList.add('pptilt');
+            gsap.utils.toArray(grid.children).forEach((card) => {
+              const rx = gsap.quickTo(card, 'rotationX', { duration: 0.4, ease: 'power3.out' });
+              const ry = gsap.quickTo(card, 'rotationY', { duration: 0.4, ease: 'power3.out' });
+              card.style.transformOrigin = '50% 25%';
+              card.addEventListener('mousemove', (e) => {
+                const r = card.getBoundingClientRect();
+                const px = (e.clientX - r.left) / r.width - 0.5;
+                const py = (e.clientY - r.top) / r.height - 0.5;
+                rx(py * -8); ry(px * 10);
+              });
+              card.addEventListener('mouseleave', () => { rx(0); ry(0); });
+            });
+          }
+
+          // 6) Magnetic pull on category tiles and the deals link
+          gsap.utils.toArray('.cat-tile, .deal-more').forEach((el) => {
+            const tx = gsap.quickTo(el, 'x', { duration: 0.35, ease: 'power3.out' });
+            const ty = gsap.quickTo(el, 'y', { duration: 0.35, ease: 'power3.out' });
+            el.addEventListener('mousemove', (e) => {
+              const r = el.getBoundingClientRect();
+              const dx = (e.clientX - (r.left + r.width / 2)) * 0.18;
+              const dy = (e.clientY - (r.top + r.height / 2)) * 0.22;
+              tx(Math.max(-10, Math.min(10, dx)));
+              ty(Math.max(-10, Math.min(10, dy)));
+            });
+            el.addEventListener('mouseleave', () => { tx(0); ty(0); });
+          });
+
+          // 7) Re-layout triggers after assets settle
+          const refresh = () => ScrollTrigger.refresh();
+          window.addEventListener('load', refresh);
+          window.addEventListener('resize', refresh);
+        });
+      };
+      if (document.readyState !== 'loading' && window.gsap) boot();
+      else window.addEventListener('load', boot);
     })();
   </script>
 </body>

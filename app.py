@@ -54,7 +54,7 @@ def create_app(config_class=Config):
             "default-src 'self'; "
             "img-src 'self' https: data:; "
             "style-src 'self' 'unsafe-inline'; "
-            "script-src 'self' 'unsafe-inline'; "
+            "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
             "form-action 'self'; "
             "frame-ancestors 'none'; "
             "base-uri 'self'; "
