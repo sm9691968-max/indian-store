@@ -17,7 +17,7 @@
   <a class="product-thumb" href="{{ url_for('catalog.product_detail', slug=p.slug) }}">
     {% if p.badge %}<span class="product-badge">{{ p.badge }}</span>{% endif %}
     {% if p.stock == 0 %}<span class="out-chip">Sold out</span>
-    {% elif p.is_low_stock %}<span class="out-chip" style="background:rgba(245,158,11,0.92)">Only {{ p.stock }}</span>{% endif %}
+    {% elif p.is_low_stock %}<span class="out-chip" style="background:rgba(224, 155, 47,0.92)">Only {{ p.stock }}</span>{% endif %}
     {% if p.image_url %}
       <img src="{{ p.image_url }}" alt="{{ p.name }}" loading="lazy">
     {% else %}

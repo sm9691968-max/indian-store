@@ -8,10 +8,10 @@
   <h1>Deals worth<br><em>waiting for</em>.</h1>
   <p>Hand-picked markdowns on keyboards, audio, displays and desk gear — marked down for a limited run while stock lasts.</p>
   <div class="hero-stats">
-    <div class="hero-stat"><div class="v">{{ total }}</div><div class="k">On sale now</div></div>
-    {% if max_pct %}<div class="hero-stat"><div class="v">Up to {{ max_pct }}%</div><div class="k">Top markdown</div></div>{% endif %}
-    <div class="hero-stat"><div class="v">30d</div><div class="k">Free returns</div></div>
-    <div class="hero-stat"><div class="v">24h</div><div class="k">Dispatch window</div></div>
+    <div class="hero-stat"><div class="v" data-count="{{ total }}">{{ total }}</div><div class="k">On sale now</div></div>
+    {% if max_pct %}<div class="hero-stat"><div class="v" data-count="{{ max_pct }}" data-prefix="Up to " data-suffix="%">Up to {{ max_pct }}%</div><div class="k">Top markdown</div></div>{% endif %}
+    <div class="hero-stat"><div class="v" data-count="30" data-suffix="d">30d</div><div class="k">Free returns</div></div>
+    <div class="hero-stat"><div class="v" data-count="24" data-suffix="h">24h</div><div class="k">Dispatch window</div></div>
   </div>
 </section>
 

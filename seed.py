@@ -45,10 +45,10 @@ ADMIN_EMAIL = "admin@indianstore.id"
 ADMIN_PASSWORD = "IndianStoreAdmin2026"
 
 CATEGORIES = [
-    ("Keyboards", "keyboards", "#6366f1"),
-    ("Displays", "displays", "#ec4899"),
-    ("Audio", "audio", "#06b6d4"),
-    ("Storage", "storage", "#f59e0b"),
+    ("Keyboards", "keyboards", "#e5a83b"),
+    ("Displays", "displays", "#c9a24a"),
+    ("Audio", "audio", "#2ea397"),
+    ("Storage", "storage", "#e2593e"),
     ("Networking", "networking", "#10b981"),
 ]
 

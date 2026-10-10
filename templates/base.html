@@ -30,6 +30,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/site.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/extended.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/animations.css') }}">
   <script>
     if (localStorage.getItem('indian-store-theme') === 'light') {
       document.documentElement.setAttribute('data-theme', 'light');
@@ -37,6 +38,7 @@
   </script>
 </head>
 <body>
+  <div id="scrollProgress"></div>
   <div class="site-orb a"></div>
   <div class="site-orb b"></div>
   <div class="site-orb c"></div>
@@ -321,9 +323,66 @@
         const light = document.documentElement.getAttribute('data-theme') === 'light';
         document.documentElement.setAttribute('data-theme', light ? 'dark' : 'light');
         localStorage.setItem('indian-store-theme', light ? 'dark' : 'light');
-        sync();
+sync();
+    });
+  })();
+
+    // Scroll progress bar, count-up stats, cart-hop feedback.
+    (function uiMotion() {
+      if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+
+      const doc = document.documentElement;
+      const bar = document.getElementById('scrollProgress');
+      let ticking = false;
+      const paint = () => {
+        const max = doc.scrollHeight - window.innerHeight;
+        if (bar) bar.style.transform = 'scaleX(' + (max > 0 ? Math.min(1, window.scrollY / max) : 0) + ')';
+        ticking = false;
+      };
+      const onScroll = () => {
+        if (!ticking) { window.requestAnimationFrame(paint); ticking = true; }
+      };
+      window.addEventListener('scroll', onScroll, { passive: true });
+      window.addEventListener('resize', onScroll, { passive: true });
+      paint();
+
+      const counters = document.querySelectorAll('[data-count]');
+      if (counters.length) {
+        const formatCount = (value, decimals, prefix, suffix) =>
+          (prefix || '') + Number(value).toFixed(decimals)
+            .toLocaleString(undefined, { minimumFractionDigits: decimals, maximumFractionDigits: decimals }) + (suffix || '');
+        const cio = new IntersectionObserver((entries) => {
+          entries.forEach((entry) => {
+            if (!entry.isIntersecting) return;
+            const el = entry.target;
+            cio.unobserve(el);
+            const target = parseFloat(el.dataset.count);
+            const decimals = parseInt(el.dataset.decimals || '0', 10);
+            const prefix = el.dataset.prefix || '';
+            const suffix = el.dataset.suffix || '';
+            let start = null;
+            const step = (ts) => {
+              if (start === null) start = ts;
+              const p = Math.min(1, (ts - start) / 950);
+              el.textContent = formatCount(target * (1 - Math.pow(1 - p, 3)), decimals, prefix, suffix);
+              if (p < 1) window.requestAnimationFrame(step);
+            };
+            window.requestAnimationFrame(step);
+          });
+        }, { threshold: 0.4 });
+        counters.forEach((c) => cio.observe(c));
+      }
+
+      const bumpCart = () => {
+        const svg = document.querySelector('.header-actions a[aria-label="Cart"] svg');
+        if (!svg) return;
+        svg.classList.remove('cart-bump');
+        void svg.offsetWidth;
+        svg.classList.add('cart-bump');
+      };
+      document.querySelectorAll('.add-btn').forEach((btn) => {
+        btn.addEventListener('click', bumpCart);
       });
-      sync();
     })();
   </script>
 </body>

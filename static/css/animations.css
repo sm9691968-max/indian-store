@@ -1,0 +1,117 @@
+/* Modern micro-motion layer: entrances, press feedback, loading shimmer
+   and progress. Scoped to transform/opacity only, staggered entrances,
+   and every decorative animation is disabled under prefers-reduced-motion. */
+
+/* Scroll progress bar (driven by JS as a scaleX) */
+#scrollProgress {
+  position: fixed;
+  top: 0; left: 0;
+  height: 3px;
+  width: 100%;
+  background: linear-gradient(90deg, var(--accent-primary), #f2bd5a 55%, var(--accent-rose));
+  box-shadow: 0 0 14px rgba(232, 163, 61, 0.55);
+  transform: scaleX(0);
+  transform-origin: 0 50%;
+  z-index: 60;
+  pointer-events: none;
+}
+
+/* Hero children stagger in after the section entrance */
+.hero > * { animation: fadeUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) both; }
+.hero > *:nth-child(1) { animation-delay: 0.03s; }
+.hero > *:nth-child(2) { animation-delay: 0.12s; }
+.hero > *:nth-child(3) { animation-delay: 0.21s; }
+.hero > *:nth-child(4) { animation-delay: 0.3s; }
+
+/* Product grid cards stagger in (home + deals + category pages) */
+.product-grid > .product-card { animation-delay: 0.04s; }
+.product-grid > .product-card:nth-child(2)  { animation-delay: 0.08s; }
+.product-grid > .product-card:nth-child(3)  { animation-delay: 0.12s; }
+.product-grid > .product-card:nth-child(4)  { animation-delay: 0.16s; }
+.product-grid > .product-card:nth-child(5)  { animation-delay: 0.2s; }
+.product-grid > .product-card:nth-child(6)  { animation-delay: 0.24s; }
+.product-grid > .product-card:nth-child(7)  { animation-delay: 0.28s; }
+.product-grid > .product-card:nth-child(8)  { animation-delay: 0.32s; }
+.product-grid > .product-card:nth-child(9)  { animation-delay: 0.36s; }
+.product-grid > .product-card:nth-child(10) { animation-delay: 0.4s; }
+.product-grid > .product-card:nth-child(11) { animation-delay: 0.44s; }
+.product-grid > .product-card:nth-child(12) { animation-delay: 0.48s; }
+
+/* Deals strip cards cascade in */
+.deal-track .deal-card {
+  animation: fadeUp 0.55s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.deal-track .deal-card:nth-child(1) { animation-delay: 0.05s; }
+.deal-track .deal-card:nth-child(2) { animation-delay: 0.1s; }
+.deal-track .deal-card:nth-child(3) { animation-delay: 0.15s; }
+.deal-track .deal-card:nth-child(4) { animation-delay: 0.2s; }
+.deal-track .deal-card:nth-child(5) { animation-delay: 0.25s; }
+.deal-track .deal-card:nth-child(6) { animation-delay: 0.3s; }
+.deal-track .deal-card:nth-child(7) { animation-delay: 0.35s; }
+.deal-track .deal-card:nth-child(8) { animation-delay: 0.4s; }
+
+/* Category tiles cascade in */
+.cat-rack .cat-tile { animation: fadeUp 0.55s cubic-bezier(0.16, 1, 0.3, 1) both; }
+.cat-rack .cat-tile:nth-child(1) { animation-delay: 0.05s; }
+.cat-rack .cat-tile:nth-child(2) { animation-delay: 0.11s; }
+.cat-rack .cat-tile:nth-child(3) { animation-delay: 0.17s; }
+.cat-rack .cat-tile:nth-child(4) { animation-delay: 0.23s; }
+.cat-rack .cat-tile:nth-child(5) { animation-delay: 0.29s; }
+
+/* Loading shimmer on thumbs until the image covers it (loading-only loop) */
+.product-thumb::before {
+  content: '';
+  position: absolute; inset: 0;
+  background: linear-gradient(100deg,
+    transparent 24%, rgba(255, 240, 216, 0.07) 40%,
+    rgba(255, 240, 216, 0.14) 50%, rgba(255, 240, 216, 0.07) 60%,
+    transparent 76%);
+  background-size: 220% 100%;
+  animation: thumbShimmer 1.4s linear infinite;
+  z-index: 0;
+  pointer-events: none;
+}
+.product-thumb img,
+.product-thumb .thumb-glyph { position: relative; z-index: 1; }
+@keyframes thumbShimmer {
+  from { background-position: 120% 0; }
+  to   { background-position: -120% 0; }
+}
+
+/* Press feedback on the tappable bits (150-300ms micro-interaction) */
+.btn-primary,
+.btn-ghost,
+.icon-btn,
+.add-btn,
+.mini-btn,
+.cat-tile {
+  transition: transform 0.16s ease, box-shadow 0.16s ease,
+              border-color 0.16s ease, background-color 0.16s ease,
+              color 0.16s ease, opacity 0.16s ease;
+}
+.btn-primary:active,
+.btn-ghost:active,
+.icon-btn:active,
+.add-btn:active:not(:disabled),
+.mini-btn:active { transform: scale(0.96); }
+.add-btn:disabled { transition: none; }
+
+/* Cart icon hop when something is added (classed by JS) */
+.cart-bump svg { animation: cartBump 0.5s cubic-bezier(0.34, 1.56, 0.64, 1); }
+@keyframes cartBump {
+  0%   { transform: scale(1); }
+  30%  { transform: scale(1.45) rotate(-10deg); }
+  65%  { transform: scale(0.9) rotate(4deg); }
+  100% { transform: scale(1) rotate(0); }
+}
+
+/* Honor the operating-system motion preference */
+@media (prefers-reduced-motion: reduce) {
+  #scrollProgress { display: none; }
+  .product-thumb::before { animation: none; background: none; }
+  .hero > *,
+  .product-grid > .product-card,
+  .deal-track .deal-card,
+  .cat-rack .cat-tile { animation: none !important; }
+  .cart-bump svg { animation: none; }
+}

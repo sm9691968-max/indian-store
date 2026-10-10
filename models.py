@@ -178,7 +178,7 @@ class Category(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(80), unique=True, nullable=False)
     slug = db.Column(db.String(80), unique=True, nullable=False, index=True)
-    accent = db.Column(db.String(7), default="#6366f1", nullable=False)
+    accent = db.Column(db.String(7), default="#e5a83b", nullable=False)
     blurb = db.Column(db.String(200), default="", nullable=False)
 
     products = db.relationship("Product", back_populates="category", lazy="selectin")
