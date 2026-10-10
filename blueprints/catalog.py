@@ -1,4 +1,5 @@
 import secrets
+import time
 from decimal import Decimal
 
 from flask import (
@@ -39,6 +40,8 @@ from helpers import (
     visitor_id,
     wishlist_ids,
     wants_json,
+    recommend_products,
+    money_str,
 )
 
 catalog_bp = Blueprint("catalog", __name__)
@@ -56,7 +59,7 @@ PRICE_BANDS = [
 ]
 
 
-def _build_query():
+def _build_query(extra: dict | None = None):
     search = (request.args.get("q") or "").strip()
     slug = (request.args.get("category") or "").strip()
     sort = request.args.get("sort", "featured")
@@ -64,6 +67,17 @@ def _build_query():
     brand = (request.args.get("brand") or "").strip()
     min_rating = request.args.get("rating", type=int) or 0
     in_stock_only = request.args.get("stock") == "1"
+
+    # Natural-language search overrides: parsed filters win over the raw query,
+    # so "gaming laptop under 50,000" behaves like the filters it implies.
+    if extra:
+        search = (extra.get("q") if extra.get("q") is not None else search) or ""
+        slug = extra.get("category", slug) or ""
+        band = extra.get("price", band) or ""
+        brand = extra.get("brand", brand) or ""
+        min_rating = int(extra.get("rating", min_rating) or 0)
+        if extra.get("stock") is not None:
+            in_stock_only = bool(extra["stock"])
 
     stmt = db.select(Product).where(Product.is_active.is_(True))
 
@@ -133,6 +147,30 @@ def _deal_stmt():
     )
 
 
+def _local_bands() -> list[tuple]:
+    """Price-band codes with labels rendered in the active currency."""
+    return [
+        (
+            key,
+            ("Under " + money_str(high)) if low is None else (
+                "Over " + money_str(low) if high is None else f"{money_str(low)} – {money_str(high)}"
+            ),
+            low,
+            high,
+        )
+        for key, _label, low, high in PRICE_BANDS
+    ]
+
+
+def _price_band_for(max_usd) -> str | None:
+    for key, _label, low, high in PRICE_BANDS:
+        if high is None:
+            return key if max_usd >= low else None
+        if max_usd >= low:
+            return key
+    return None
+
+
 @catalog_bp.get("/deals")
 def deals():
     sort = request.args.get("sort", "discount")
@@ -187,7 +225,19 @@ def deals():
 
 @catalog_bp.get("/")
 def index():
-    stmt, filters = _build_query()
+    raw_q = (request.args.get("q") or "").strip()
+    extra, nl_powered = None, False
+    if raw_q:
+        from blueprints.assistant import parse_search
+
+        parsed = parse_search(raw_q)
+        if parsed:
+            extra = {key: value for key, value in parsed.items() if value is not None}
+            if "q" not in parsed:
+                extra["q"] = ""
+            nl_powered = True
+
+    stmt, filters = _build_query(extra)
     page = max(1, request.args.get("page", type=int) or 1)
     count_stmt = db.select(func.count()).select_from(stmt.order_by(None).subquery())
     total = db.session.scalar(count_stmt) or 0
@@ -250,12 +300,13 @@ def index():
         brands=brands,
         deals=deals,
         show_deals=show_deals,
-        price_bands=PRICE_BANDS,
+        price_bands=_local_bands(),
         filters=filters,
         page=page,
         pages=pages,
         total=total,
         wish_ids=wishlist_ids(current_user()),
+        nl_powered=nl_powered,
     )
 
 
@@ -316,10 +367,13 @@ def product_detail(slug):
             ).all()
         ) & {product.id}
 
+    co_bought = recommend_products([product.id], exclude_ids=[product.id], limit=2)
+
     return render_template(
         "catalog/product.html",
         product=product,
         related=related,
+        co_bought=co_bought,
         reviews=reviews,
         breakdown=breakdown,
         my_review=my_review,
@@ -330,7 +384,35 @@ def product_detail(slug):
         alerts=alerts,
         in_compare=product.id in compare_ids,
         compare_count=len(compare_ids),
+        emi_plans=_emi_plans(product.price),
+        viewing_now=_viewing_now(product),
     )
+
+
+def _emi_plans(price) -> list[dict]:
+    """Add-on-interest EMI spread over the usual Indian tenures (11% p.a.)."""
+    principal = Decimal(str(price))
+    rate = Decimal("0.11")
+    plans = []
+    for months in (3, 6, 9, 12):
+        per_month = (principal * (1 + rate * Decimal(months) / 12)) / Decimal(months)
+        plans.append(
+            {
+                "months": months,
+                "per": per_month.quantize(Decimal("0.01")),
+                "total": (principal * (1 + rate * Decimal(months) / 12)).quantize(
+                    Decimal("0.01")
+                ),
+            }
+        )
+    return plans
+
+
+def _viewing_now(product) -> int:
+    """Deterministic 'people viewing this right now' figure for a product."""
+    bucket = int(time.time()) // 60
+    seed = ((product.id or 1) * 2654435761 + bucket * 31) & 0xFFFFFFFF
+    return 3 + seed % 46
 
 
 def _record_view(user, product) -> None:

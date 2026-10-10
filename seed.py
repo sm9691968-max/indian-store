@@ -219,10 +219,16 @@ PRODUCTS = [
 
 CUSTOMERS = [
     ("Alex Morgan", DEMO_EMAIL, DEMO_PASSWORD, "+1 555 0142", True),
-    ("Priya Raman", "priya@indianstore.id", "IndianStore2026", "+1 555 0177", False),
-    ("Daniel Okafor", "daniel@indianstore.id", "IndianStore2026", "+1 555 0198", False),
-    ("Sofia Lindqvist", "sofia@indianstore.id", "IndianStore2026", "+1 555 0131", False),
-    ("Kenji Watanabe", "kenji@indianstore.id", "IndianStore2026", "+1 555 0165", False),
+    ("Priya Raman", "priya@indianstore.id", "IndianStore2026", "+91 555 0177", False),
+    ("Daniel Okafor", "daniel@indianstore.id", "IndianStore2026", "+91 555 0198", False),
+    ("Sofia Lindqvist", "sofia@indianstore.id", "IndianStore2026", "+91 555 0131", False),
+    ("Kenji Watanabe", "kenji@indianstore.id", "IndianStore2026", "+91 555 0165", False),
+    ("Rohan Iyer", "rohan@indianstore.id", "IndianStore2026", "+91 555 0211", False),
+    ("Ananya Krishnan", "ananya@indianstore.id", "IndianStore2026", "+91 555 0246", False),
+    ("Arjun Mehta", "arjun@indianstore.id", "IndianStore2026", "+91 555 0298", False),
+    ("Sneha Deshpande", "sneha@indianstore.id", "IndianStore2026", "+91 555 0334", False),
+    ("Vikram Malhotra", "vikram@indianstore.id", "IndianStore2026", "+91 555 0388", False),
+    ("Kavya Nair", "kavya@indianstore.id", "IndianStore2026", "+91 555 0421", False),
 ]
 
 ADDRESSES = [
@@ -288,6 +294,10 @@ REVIEW_POOL = [
     (5, "Worth every cent", "I compared three alternatives before settling on this and I am glad I did. The difference in everyday use is obvious after about a week."),
     (4, "Happy with the purchase", "Does what it says. Packaging was minimal which I actually appreciated, and everything arrived undamaged."),
     (2, "Not for me", "Build is fine but it did not match my workflow the way I hoped. Returning it was painless, which counts for something."),
+    (5, "Bought during the festive sale", "Picked this up when the discount was live and honestly it felt even better than the marked-down price suggests. Delivered in three days, well packed."),
+    (4, "Solid value for the money", "Compared it against two other options in this range and this one wins on build and daily ease. Great for a home studio setup."),
+    (3, "Works, minor niggles", "Performance is fine but the first unit I got had a small defect in the box; the replacement arrived fast. Four stars once it is set up properly."),
+    (5, "Exactly what I hoped for", "Arrived two days early and the build quality is well past what I expected at this price. Three weeks in and it has not disappointed me once."),
 ]
 
 ORDER_PLAN = [
@@ -1417,6 +1427,14 @@ def build_reviews(db, products, customers, rng) -> None:
         chosen = rng.sample(pool, 4)
         chosen_reviewers = rng.sample(reviewers, 4)
         for offset, (reviewer, (rating, title, body)) in enumerate(zip(chosen_reviewers, chosen)):
+            created = utcnow() - timedelta(
+                days=6 + offset * rng.randint(20, 45) + rng.randint(0, 8)
+            )
+            updated = (
+                created + timedelta(days=rng.randint(1, 6))
+                if rng.random() < 0.25
+                else None
+            )
             db.session.add(
                 Review(
                     product_id=product.id,
@@ -1425,7 +1443,9 @@ def build_reviews(db, products, customers, rng) -> None:
                     title=title,
                     body=body,
                     is_verified=True,
-                    created_at=utcnow() - timedelta(days=2 + offset * 6 + rng.randint(0, 3)),
+                    helpful_count=rng.randint(1, 180),
+                    created_at=created,
+                    updated_at=updated or created,
                 )
             )
     db.session.commit()

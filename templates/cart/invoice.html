@@ -109,27 +109,27 @@
           </td>
           <td class="doc-no">{{ item.product.sku if item.product else '—' }}</td>
           <td class="num">{{ item.quantity }}</td>
-          <td class="num">{{ item.unit_price|usd }}</td>
-          <td class="num">{{ item.line_total|usd }}</td>
+          <td class="num">{{ item.unit_price|ccy(order.currency) }}</td>
+          <td class="num">{{ item.line_total|ccy(order.currency) }}</td>
         </tr>
         {% endfor %}
       </tbody>
     </table>
 
     <div class="totals">
-      <div><span>Subtotal</span><span>{{ order.subtotal|usd }}</span></div>
+      <div><span>Subtotal</span><span>{{ order.subtotal|ccy(order.currency) }}</span></div>
       {% if order.discount %}
-      <div><span>Discount{% if order.coupon_code %} ({{ order.coupon_code }}){% endif %}</span><span>−{{ order.discount|usd }}</span></div>
+      <div><span>Discount{% if order.coupon_code %} ({{ order.coupon_code }}){% endif %}</span><span>−{{ order.discount|ccy(order.currency) }}</span></div>
       {% endif %}
       {% if order.points_redeemed %}
-      <div><span>Loyalty redemption ({{ order.points_redeemed }} pts)</span><span>−{{ (order.points_redeemed / 100)|usd }}</span></div>
+      <div><span>Loyalty redemption ({{ order.points_redeemed }} pts)</span><span>−{{ (order.points_redeemed / 100)|ccy(order.currency) }}</span></div>
       {% endif %}
       {% if order.gift_card_code %}
       <div><span>Gift card {{ order.gift_card_code }}</span><span>applied</span></div>
       {% endif %}
-      <div><span>Delivery</span><span>{{ order.shipping_cost|usd }}</span></div>
-      <div><span>Tax</span><span>{{ order.tax|usd }}</span></div>
-      <div class="grand"><span>Total ({{ order.currency }})</span><span>{{ order.total|usd }}</span></div>
+      <div><span>Delivery</span><span>{{ order.shipping_cost|ccy(order.currency) }}</span></div>
+      <div><span>Tax</span><span>{{ order.tax|ccy(order.currency) }}</span></div>
+      <div class="grand"><span>Total ({{ order.currency }})</span><span>{{ order.total|ccy(order.currency) }}</span></div>
     </div>
 
     <div class="meta">

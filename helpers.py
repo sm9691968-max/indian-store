@@ -27,6 +27,9 @@ from models import (
     Coupon,
     EmailLog,
     LoyaltyEvent,
+    Order,
+    OrderItem,
+    Product,
     StockAlert,
     User,
     utcnow,
@@ -185,8 +188,10 @@ def clear_totp_failures() -> None:
 
 
 def currency_code() -> str:
-    code = session.get("currency", "USD")
-    return code if code in CURRENCIES else "USD"
+    # Indian rupee is this marketplace's home currency; the shopper can still
+    # switch to USD/EUR/etc. and the choice sticks for the session.
+    code = session.get("currency", "INR")
+    return code if code in CURRENCIES else "INR"
 
 
 def fx_rate(code: str | None = None) -> Decimal:
@@ -201,6 +206,87 @@ def convert(amount, code: str | None = None) -> Decimal:
 
 def currency_symbol(code: str | None = None) -> str:
     return CURRENCIES[code or currency_code()]["symbol"]
+
+
+def group_amount(value, code: str | None = None) -> str:
+    """Group a rounded amount in the display currency's local convention.
+
+    The Indian rupee (and our other south-asian markets) group 12,34,567 the
+    Indian way — the last three digits once, then every pair after that.
+    """
+    neg = value < 0
+    s = f"{abs(value):,.2f}"
+    if (code or currency_code()) == "INR":
+        int_part, _, dec = s.partition(".")
+        digits = int_part.replace(",", "")
+        if len(digits) <= 3:
+            int_part = digits
+        else:
+            head, tail = digits[:-3], digits[-3:]
+            pairs = []
+            while head:
+                pairs.append(head[-2:])
+                head = head[:-2]
+            int_part = ",".join(reversed(pairs)) + "," + tail
+        s = int_part + "." + dec
+    return ("-" if neg else "") + s
+
+
+def money_str(value, code: str | None = None) -> str:
+    """Render a USD amount in the active display currency with its symbol."""
+    try:
+        amount = convert(value, code)
+    except (TypeError, ValueError):
+        amount = Decimal("0.00")
+    return f"{CURRENCIES[code or currency_code()]['symbol']}{group_amount(amount, code)}"
+
+
+def free_delivery_label() -> str:
+    """Localised price from which delivery is free, for copy on listings."""
+    return money_str(FREE_SHIPPING_THRESHOLD)
+
+
+# Cities used by the deterministic live-activity ticker.
+_ACTIVITY_CITIES = (
+    "Mumbai", "Delhi", "Bengaluru", "Hyderabad", "Ahmedabad", "Chennai",
+    "Pune", "Kolkata", "Jaipur", "Surat", "Lucknow", "Nagpur",
+)
+
+
+def live_activity_events(limit: int = 8) -> list[dict]:
+    """A short, deterministic stream of 'someone just bought X' events.
+
+    Named after real-sounding Indian customers, derived from the catalogue so
+    each event links to a real product, and seeded by the product id so the
+    sequence is stable within a minute — convincing for a demo ticker.
+    """
+    from models import Product
+
+    buyers = ("Rohan", "Ananya", "Arjun", "Sneha", "Vikram", "Kavya",
+              "Ishaan", "Meera", "Dev", "Tanvi")
+    products = db.session.scalars(
+        db.select(Product)
+        .where(Product.is_active.is_(True), Product.stock > 0)
+        .order_by(Product.sold_count.desc())
+        .limit(30)
+    ).all()
+    bucket = int(time.time()) // 60
+    events = []
+    for i, product in enumerate(products[:limit]):
+        seed = (product.id * 2654435761 + bucket * 97) & 0xFFFFFFFF
+        city = _ACTIVITY_CITIES[seed % len(_ACTIVITY_CITIES)]
+        minutes = 1 + (seed >> 3) % 45
+        events.append(
+            {
+                "name": buyers[(seed >> 11) % len(buyers)],
+                "city": city,
+                "product": product.name,
+                "slug": "/product/" + product.slug,
+                "price": money_str(product.price),
+                "mins_ago": minutes,
+            }
+        )
+    return events
 
 
 # ----------------------------------------------------------------- wishlist
@@ -409,6 +495,62 @@ def audit(actor, action: str, entity: str = "", entity_id="", detail: str = "") 
             detail=detail[:300],
         )
     )
+
+
+# ----------------------------------------------------------------- recommendations
+
+
+def recommend_products(product_ids, exclude_ids=(), limit: int = 4) -> list:
+    """Products that frequently ship in the same order as the given ones."""
+    product_ids = [pid for pid in product_ids if pid]
+    if not product_ids:
+        return []
+    order_ids = db.session.scalars(
+        db.select(OrderItem.order_id).where(OrderItem.product_id.in_(product_ids))
+    ).all()
+    order_ids = [oid for oid in order_ids if oid]
+    if not order_ids:
+        return []
+    blocked = set(product_ids) | set(exclude_ids or ())
+    rows = db.session.execute(
+        db.select(Product, db.func.count(Product.id).label("co"))
+        .join(OrderItem, OrderItem.product_id == Product.id)
+        .where(
+            OrderItem.order_id.in_(order_ids),
+            Product.is_active.is_(True),
+            Product.id.notin_(blocked),
+        )
+        .group_by(Product.id)
+        .order_by(db.func.count(Product.id).desc(), Product.rating.desc())
+        .limit(limit * 2)
+    ).all()
+    picks = [row[0] for row in rows if row[0].stock > 0][:limit]
+    return _fill_recommendations(picks, blocked, limit)
+
+
+def _fill_recommendations(picks: list, blocked: set, limit: int) -> list:
+    """Top up a recommendations rail with popular products when affinity is thin."""
+    if len(picks) >= limit:
+        return picks[:limit]
+    have = {p.id for p in picks}
+    pool = db.session.scalars(
+        db.select(Product)
+        .where(
+            Product.is_active.is_(True),
+            Product.stock > 0,
+            Product.id.notin_(have | blocked),
+        )
+        .order_by(Product.sold_count.desc(), Product.rating.desc())
+        .limit(limit * 2)
+    ).all()
+    for product in pool:
+        if product.id in have:
+            continue
+        picks.append(product)
+        have.add(product.id)
+        if len(picks) >= limit:
+            break
+    return picks[:limit]
 
 
 # ----------------------------------------------------------------- text

@@ -27,3 +27,12 @@ class Config:
     WTF_CSRF_HEADERS = ["X-CSRFToken", "X-CSRF-Token"]
 
     DEBUG = os.environ.get("FLASK_DEBUG", "") == "1"
+
+    # Local AI endpoint used by the shopping assistant and natural-language
+    # search. Point it anywhere speaking the OpenAI wire protocol (Ollama, LM
+    # Studio, vLLM) — the stack prefers a local model so the demo needs no keys.
+    AI_BASE_URL = os.environ.get("AI_BASE_URL", "http://127.0.0.1:11434")
+    AI_MODEL = os.environ.get("AI_MODEL", "")
+    AI_TIMEOUT = float(os.environ.get("AI_TIMEOUT", "45"))
+    AI_RATE_LIMIT = 8  # assistant turns per client per window
+    AI_RATE_WINDOW = 15  # seconds

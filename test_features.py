@@ -382,7 +382,7 @@ def main():
         order_ref = order.reference
         check("order records the gift card", order.gift_card_code == "NXGC-DEMO50", str(order.gift_card_code))
         check("order records points redeemed", order.points_redeemed == 200, str(order.points_redeemed))
-        check("order currency recorded", order.currency == "USD", str(order.currency))
+        check("order currency recorded", order.currency == "INR", str(order.currency))
         check("order total is positive", float(order.total) > 0, str(order.total))
         check("order discounted below subtotal", float(order.total) < float(order.subtotal) + 20,
               str(order.total))
@@ -418,7 +418,7 @@ def main():
     check("invoice CSV downloads", r.status_code == 200)
     check("CSV has a content type", "text/csv" in r.headers.get("Content-Type", ""))
     check("CSV lists the item", b"Nebula" in r.data)
-    check("CSV reports the currency", b"Total (USD)" in r.data, str(r.data[-200:]))
+    check("CSV reports the currency", b"Total (INR)" in r.data, str(r.data[-200:]))
 
     r = client.get("/cart/orders/NOPE-NOPE/invoice")
     check("missing order invoice 404s", r.status_code == 404, str(r.status_code))
@@ -767,7 +767,7 @@ def main():
     r = client.post("/currency", data={"currency": "USD"}, follow_redirects=True)
     with app.app_context():
         currencies = {o.currency for o in Order.query.all()}
-        check("every order records USD", currencies == {"USD"}, str(currencies))
+        check("every order records its creation currency", currencies == {"INR"}, str(currencies))
 
     # ----------------------------------------------------------------------- SEO
     print("\n[F20] SEO endpoints")

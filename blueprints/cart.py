@@ -1,4 +1,5 @@
 import secrets
+from datetime import timedelta
 from decimal import Decimal
 
 from flask import (
@@ -41,6 +42,7 @@ from helpers import (
     log_email,
     points_for_spend,
     safe_next,
+    recommend_products,
     FREE_SHIPPING_THRESHOLD,
 )
 
@@ -57,8 +59,14 @@ def view():
     totals["free_threshold"] = FREE_SHIPPING_THRESHOLD
     totals["points_hint"] = points_for_spend(totals["subtotal"] - totals["discount"])
 
+    in_cart = [i.product_id for i in items if i.product_id]
+    cart_recs = (
+        recommend_products(in_cart, exclude_ids=in_cart, limit=4) if in_cart else []
+    )
+
     return render_template(
-        "cart/view.html", items=items, saved=saved, user=user, **totals
+        "cart/view.html", items=items, saved=saved, user=user,
+        cart_recs=cart_recs, **totals
     )
 
 
@@ -441,7 +449,14 @@ def order_detail(reference):
     if order.user_id != user.id and not user.is_admin:
         abort(403)
 
-    return render_template("cart/order_detail.html", order=order, flow=ORDER_FLOW)
+    eta = None
+    if order.status in ("Processing", "Packed", "Shipped", "Out for delivery"):
+        days = {"Processing": 6, "Packed": 5, "Shipped": 4, "Out for delivery": 1}[order.status]
+        eta = (order.created_at + timedelta(days=days)).date()
+
+    return render_template(
+        "cart/order_detail.html", order=order, flow=ORDER_FLOW, eta=eta
+    )
 
 
 @cart_bp.post("/orders/<reference>/cancel")

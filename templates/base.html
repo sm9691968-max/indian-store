@@ -501,6 +501,169 @@ sync();
       if (document.readyState !== 'loading' && window.gsap) boot();
       else window.addEventListener('load', boot);
     })();
+
+    // AI Shopping Assistant — a lightweight chat widget on every page.
+    // Talks to /assistant/chat, which answers locally via Ollama when it is
+    // running and falls back to a deterministic catalogue match otherwise,
+    // so the widget always has something useful to say.
+    (function uiAssistant() {
+      const css = document.createElement('style');
+      css.textContent =
+        '#assistFab{position:fixed;right:22px;bottom:22px;z-index:120;width:58px;height:58px;border-radius:50%;' +
+        'background:linear-gradient(135deg,var(--accent-rose),var(--accent-amber));border:none;cursor:pointer;' +
+        'display:flex;align-items:center;justify-content:center;box-shadow:0 12px 30px rgba(0,0,0,.45);' +
+        'transition:transform .25s ease} #assistFab:hover{transform:translateY(-3px) scale(1.06)}' +
+        '#assistFab svg{width:26px;height:26px;stroke:#0c0c10;fill:none;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}' +
+        '#assistFab::after{content:"";position:absolute;top:6px;right:7px;width:9px;height:9px;border-radius:50%;background:#ffffff;' +
+        'border:2px solid var(--accent-rose)}' +
+        '#assistPanel{position:fixed;right:22px;bottom:92px;z-index:120;width:min(360px,calc(100vw - 32px));' +
+        'max-height:min(560px,calc(100vh - 140px));display:none;flex-direction:column;border-radius:18px;overflow:hidden;' +
+        'background:var(--panel-bg, rgba(24,24,32,.94));border:1px solid var(--line, rgba(255,255,255,.09));' +
+        'box-shadow:0 24px 60px rgba(0,0,0,.55);backdrop-filter:blur(14px)}' +
+        'body.assist-open #assistPanel{display:flex}' +
+        '#assistHead{display:flex;align-items:center;gap:10px;padding:14px 16px;border-bottom:1px solid var(--line, rgba(255,255,255,.09));' +
+        'background:rgba(255,255,255,.03)}' +
+        '#assistHead .dot{width:9px;height:9px;border-radius:50%;background:var(--accent-amber);box-shadow:0 0 0 3px rgba(224,155,47,.22)}' +
+        '#assistHead b{font-size:.95rem}#assistHead small{display:block;font-size:.68rem;opacity:.55;font-weight:500}' +
+        '#assistClose{margin-left:auto;background:none;border:none;color:inherit;font-size:1.2rem;cursor:pointer;opacity:.6}' +
+        '#assistMsgs{flex:1;overflow-y:auto;padding:14px 14px 8px;display:flex;flex-direction:column;gap:9px;min-height:120px}' +
+        '.am{max-width:82%;padding:9px 12px;border-radius:14px;font-size:.84rem;line-height:1.45;white-space:pre-wrap;word-break:break-word}' +
+        '.am.bot{align-self:flex-start;background:rgba(255,255,255,.06);border-bottom-left-radius:4px}' +
+        '.am.user{align-self:flex-end;background:linear-gradient(135deg,var(--accent-rose),var(--accent-amber));' +
+        'color:#0c0c10;border-bottom-right-radius:4px}' +
+        '.am.think{align-self:flex-start;opacity:.55;font-style:italic;animation:assistPulse 1s ease-in-out infinite}' +
+        '@keyframes assistPulse{50%{opacity:.3}}' +
+        '#assistFoot{display:flex;gap:8px;padding:12px;border-top:1px solid var(--line, rgba(255,255,255,.09))}' +
+        '#assistInput{flex:1;min-width:0;padding:10px 12px;border-radius:12px;border:1px solid var(--line, rgba(255,255,255,.14));' +
+        'background:rgba(0,0,0,.25);color:inherit;font-size:.85rem;outline:none}' +
+        '#assistSend{border:none;border-radius:12px;padding:0 16px;background:linear-gradient(135deg,var(--accent-rose),var(--accent-amber));' +
+        'color:#0c0c10;font-weight:800;cursor:pointer}' +
+        '#assistSend[disabled]{opacity:.5;cursor:default}' +
+        '#liveToasts{position:fixed;left:18px;bottom:18px;z-index:119;display:flex;flex-direction:column;gap:8px;max-width:min(320px,calc(100vw - 36px))}' +
+        '.live-toast{display:flex;gap:9px;align-items:flex-start;padding:10px 12px;border-radius:12px;font-size:.78rem;line-height:1.4;' +
+        'background:var(--panel-bg, rgba(24,24,32,.94));border:1px solid var(--line, rgba(255,255,255,.09));' +
+        'box-shadow:0 12px 30px rgba(0,0,0,.4);animation:toastIn .4s cubic-bezier(.2,.9,.3,1.2)}' +
+        '.live-toast.leaving{animation:toastOut .3s ease forwards}' +
+        '@keyframes toastIn{from{transform:translateY(14px);opacity:0}to{transform:none;opacity:1}}' +
+        '@keyframes toastOut{to{transform:translateY(10px);opacity:0}}' +
+        '.live-toast .pulse{width:8px;height:8px;margin-top:4px;border-radius:50%;background:var(--accent-amber);flex:none;' +
+        'animation:assistPulse 1.4s ease-in-out infinite}' +
+        '.live-toast a{color:var(--accent-rose);font-weight:700;text-decoration:none}' +
+        '.live-toast .ago{opacity:.55}';
+      document.head.appendChild(css);
+
+      const fabHtml =
+        '<button id="assistFab" aria-label="Open shopping assistant" aria-expanded="false">' +
+        '<svg viewBox="0 0 24 24"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path></svg></button>' +
+        '<div id="assistPanel" role="dialog" aria-label="Shopping assistant">' +
+        '<div id="assistHead"><span class="dot"></span><div><b>Shop Assistant</b><small>AI · answers from our catalogue</small></div>' +
+        '<button id="assistClose" aria-label="Close assistant">&times;</button></div>' +
+        '<div id="assistMsgs"></div>' +
+        '<div id="assistFoot"><input id="assistInput" autocomplete="off" placeholder="Ask anything&hellip; e.g. gaming laptop under 50,000">' +
+        '<button id="assistSend">Send</button></div></div>';
+      document.body.insertAdjacentHTML('beforeend', fabHtml);
+
+      const fab = document.getElementById('assistFab');
+      const panel = document.getElementById('assistPanel');
+      const msgs = document.getElementById('assistMsgs');
+      const input = document.getElementById('assistInput');
+      const send = document.getElementById('assistSend');
+      const close = document.getElementById('assistClose');
+      const greet = () => 'Hi! I know our whole catalogue and current prices. Try "noise-cancelling headphones under 15,000", "wireless mouse with 4-star reviews", or just ask about a product.';
+
+      let opened = false;
+      const appendMsg = (text, cls) => {
+        const el = document.createElement('div');
+        el.className = 'am ' + cls;
+        el.textContent = text;
+        msgs.appendChild(el);
+        msgs.scrollTop = msgs.scrollHeight;
+      };
+      const open = () => {
+        fab.setAttribute('aria-expanded', 'true');
+        document.body.classList.add('assist-open');
+        if (!opened) { appendMsg(greet(), 'bot'); opened = true; }
+        input.focus();
+      };
+      const closePanel = () => {
+        document.body.classList.remove('assist-open');
+        fab.setAttribute('aria-expanded', 'false');
+      };
+      fab.addEventListener('click', () =>
+        document.body.classList.contains('assist-open') ? closePanel() : open());
+      close.addEventListener('click', closePanel);
+
+      const ask = () => {
+        const message = input.value.trim();
+        if (!message) return;
+        appendMsg(message, 'user');
+        input.value = '';
+        const think = document.createElement('div');
+        think.className = 'am think'; think.textContent = 'Looking through the shelf&hellip;';
+        msgs.appendChild(think); msgs.scrollTop = msgs.scrollHeight;
+        send.disabled = true;
+        fetch('/assistant/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ messages: [{ role: 'user', content: message }] }),
+        }).then((res) => res.json().catch(() => ({ reply: '' }))).then((data) => {
+          const replyEl = document.createElement('div');
+          replyEl.className = 'am bot';
+          replyEl.textContent = (data.reply || (data.error || 'That one stumped me — try a catalogue term or a price like "under 20,000".'));
+          msgs.replaceChild(replyEl, think);
+          if (data.slug) {
+            const link = document.createElement('a');
+            const linkWrap = document.createElement('div');
+            linkWrap.className = 'am bot';
+            link.href = '/product/' + encodeURIComponent(data.slug);
+            link.textContent = 'View product →';
+            link.style.color = 'var(--accent-rose)'; link.style.fontWeight = '700';
+            linkWrap.appendChild(link); msgs.appendChild(linkWrap);
+          }
+          msgs.scrollTop = msgs.scrollHeight;
+        }).catch(() => {
+          const fail = document.createElement('div');
+          fail.className = 'am bot';
+          fail.textContent = 'The assistant is offline right now — try again in a moment.';
+          msgs.replaceChild(fail, think);
+        }).finally(() => { send.disabled = false; input.focus(); });
+      };
+      send.addEventListener('click', ask);
+      input.addEventListener('keydown', (e) => { if (e.key === 'Enter') ask(); });
+    })();
+
+    // Live store activity — a gentle stream of "someone just bought X" toasts
+    // seeded deterministically on the server, so it never feels canned.
+    (function uiLiveToasts() {
+      const events = {{ live_events|tojson }};
+      const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      if (!events.length || reduce) return;
+      const wrap = document.createElement('div');
+      wrap.id = 'liveToasts';
+      document.body.appendChild(wrap);
+      let i = 0;
+      const show = () => {
+        const ev = events[i % events.length];
+        i += 1;
+        const t = document.createElement('div');
+        t.className = 'live-toast';
+        t.innerHTML = '<span class="pulse"></span><span>' +
+          (ev.name || 'Someone') + ' from ' + (ev.city || 'India') +
+          ' just picked up <a href="' + ev.slug + '" target="_blank" rel="noopener">' + (ev.product || 'something good') + '</a>' +
+          (ev.price ? ' for ' + ev.price : '') + ' · ' +
+          '<span class="ago">' + (ev.mins_ago || 1) + ' min ago</span></span>';
+        wrap.appendChild(t);
+        setTimeout(() => { t.classList.add('leaving'); }, 5200);
+        setTimeout(() => { t.remove(); }, 5600);
+      };
+      const first = setTimeout(show, 6000);
+      let loop = setInterval(show, 9500);
+      const stop = () => { clearTimeout(first); clearInterval(loop); };
+      document.addEventListener('visibilitychange', () => {
+        if (document.hidden) { stop(); }
+        else { loop = setInterval(show, 9500); }
+      });
+    })();
   </script>
 </body>
 </html>

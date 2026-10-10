@@ -6,9 +6,11 @@ from extensions import db
 from helpers import (
     CURRENCIES,
     current_user,
-    convert,
     currency_code,
     currency_symbol,
+    free_delivery_label,
+    live_activity_events,
+    money_str,
     pending_alerts,
     safe_next,
     visitor_id,
@@ -29,6 +31,7 @@ def create_app(config_class=Config):
     from blueprints.account import account_bp
     from blueprints.admin import admin_bp
     from blueprints.seo import seo_bp
+    from blueprints.assistant import assistant_bp
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(catalog_bp)
@@ -36,6 +39,11 @@ def create_app(config_class=Config):
     app.register_blueprint(account_bp)
     app.register_blueprint(admin_bp)
     app.register_blueprint(seo_bp)
+    app.register_blueprint(assistant_bp)
+
+    # The assistant chat endpoint is a read-only JSON "ask a question" call, so
+    # it is CSRF-exempt like a public API and rate-limited server-side instead.
+    csrf.exempt(assistant_bp)
 
     @app.before_request
     def ensure_visitor_id():
@@ -81,6 +89,8 @@ def create_app(config_class=Config):
             "currencies": CURRENCIES,
             "currency": code,
             "currency_sym": currency_symbol(code),
+            "free_delivery_label": free_delivery_label(),
+            "live_events": live_activity_events(),
             "site_domain": request.host,
         }
 
@@ -97,7 +107,7 @@ def create_app(config_class=Config):
     def money(value):
         """Render a USD amount in the shopper's selected currency."""
         try:
-            return f"{currency_symbol()}{convert(value):,.2f}"
+            return money_str(value)
         except (TypeError, ValueError):
             return f"{currency_symbol()}0.00"
 
@@ -108,6 +118,14 @@ def create_app(config_class=Config):
             return f"${float(value):,.2f}"
         except (TypeError, ValueError):
             return "$0.00"
+
+    @app.template_filter("ccy")
+    def ccy(value, code):
+        """Render a base-USD amount in a specific currency, for invoices."""
+        try:
+            return money_str(value, code)
+        except (TypeError, ValueError):
+            return money_str(0, code)
 
     @app.template_filter("stars")
     def stars(value):

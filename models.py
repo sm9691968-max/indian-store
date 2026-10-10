@@ -617,7 +617,7 @@ class Order(db.Model):
     gift_card_code = db.Column(db.String(20), default="", nullable=False)
     status = db.Column(db.String(32), default="Processing", nullable=False)
     payment_method = db.Column(db.String(32), default="Card", nullable=False)
-    currency = db.Column(db.String(3), default="USD", nullable=False)
+    currency = db.Column(db.String(3), default="INR", nullable=False)
     carrier = db.Column(db.String(40), default="Indian Store Express", nullable=False)
     tracking_number = db.Column(db.String(40), default="", nullable=False)
     invoice_no = db.Column(db.String(24), default="", nullable=False)

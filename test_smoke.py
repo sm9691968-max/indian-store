@@ -6,9 +6,11 @@ order tracking, cancellation, account pages and the admin console.
 
 import re
 import sys
+from decimal import Decimal
 
 from app import create_app
 from extensions import db
+from helpers import money_str
 
 PASSED = []
 
@@ -215,8 +217,8 @@ def main():
     print("\n[6] Product page and reviews")
     r = client.get("/product/nebula-75-mechanical-keyboard")
     check("product detail 200", r.status_code == 200)
-    check("detail price shown", b"$189.00" in r.data)
-    check("compare-at struck through", b"$229.00" in r.data)
+    check("detail price shown", money_str(Decimal("189"), "INR").encode() in r.data)
+    check("compare-at struck through", money_str(Decimal("229"), "INR").encode() in r.data)
     check("discount badge rendered", b"OFF" in r.data)
     check("highlights listed", b"Hot-swap sockets" in r.data)
     check("review section present", b"Customer reviews" in r.data)
@@ -346,7 +348,7 @@ def main():
     r = client.post("/cart/coupon", data={"code": "INDIANSTORE20"}, follow_redirects=True)
     check("percent coupon applied", b"INDIANSTORE20" in r.data)
     check("discount line rendered", b"Discount (INDIANSTORE20)" in r.data)
-    check("discount shown as negative", b"&minus;$129.80" in r.data)
+    check("discount shown as negative", b"&minus;" + money_str(Decimal("129.80"), "INR").encode() in r.data)
 
     r = client.post("/cart/coupon/remove", follow_redirects=True)
     check("coupon removed", b"Coupon removed" in r.data)

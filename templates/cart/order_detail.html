@@ -15,6 +15,13 @@
       <span class="status-pill status-{{ order.status|lower|replace(' ', '-') }}">{{ order.status }}</span>
     </h1>
     <p class="muted" style="font-size:0.82rem">Placed {{ order.created_at.strftime('%d %B %Y at %H:%M') }} &middot; last updated {{ order.updated_at.strftime('%d %b %Y, %H:%M') }}</p>
+    {% if eta %}
+    <div class="eta-row" role="status">
+      <span class="live-dot" aria-hidden="true"></span>
+      <strong>{{ order.status }}</strong> &middot; estimated delivery by
+      <strong>{{ eta.strftime('%A, %d %B') }}</strong>
+    </div>
+    {% endif %}
   </div>
   <div style="display:flex; gap:10px; align-items:center">
     <a class="btn-ghost" href="{{ url_for('cart.orders') }}">All orders</a>

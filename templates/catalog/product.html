@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "catalog/_product_card.html" import product_card with context %}
 {% block title %}{{ product.name }} — Indian Store{% endblock %}
 
 {% block og_title %}{{ product.name }} — Indian Store{% endblock %}
@@ -109,7 +110,32 @@
         {% if product.compare_at and product.compare_at > product.price %}<small>{{ product.compare_at|money }}</small>{% endif %}
       </span>
     </div>
-    <p class="muted" style="font-size:0.8rem">Inclusive of all taxes &middot; Free delivery over $150</p>
+    <p class="muted" style="font-size:0.8rem">Inclusive of all taxes &middot; Free delivery over {{ free_delivery_label }}</p>
+
+    <div class="live-ticker" role="status">
+      <span class="live-dot" aria-hidden="true"></span>
+      {{ viewing_now }} people are viewing this right now
+    </div>
+
+    <div class="emi-strip" id="emiStrip" aria-label="EMI options">
+      {% for plan in emi_plans %}
+      <button type="button" class="emi-chip" data-months="{{ plan.months }}"
+              data-per="{{ plan.per|money }}" data-total="{{ plan.total|money }}">
+        <strong>{{ plan.months }}</strong><span>EMIs of {{ plan.per|money }}</span>
+      </button>
+      {% endfor %}
+    </div>
+    <p class="muted sm" id="emiHint">Tap an EMI plan to see the monthly figure. No-cost EMI on first order &middot; auto-approved on cards.</p>
+
+    <form class="pin-check" id="pinForm">
+      <label class="form-label" for="pinInput" style="margin-bottom:6px">Check delivery to your pincode</label>
+      <div style="display:flex; gap:10px; flex-wrap:wrap">
+        <input type="text" id="pinInput" inputmode="numeric" maxlength="6" pattern="[0-9]{6}"
+               placeholder="e.g. 400001" aria-label="Delivery pincode" class="form-input" style="max-width:180px">
+        <button type="button" id="pinCheck" class="btn-ghost btn-sm">Check</button>
+      </div>
+      <p class="muted sm" id="pinResult"></p>
+    </form>
 
     <div class="spec-list">
       <div class="spec"><div class="k">Availability</div>
@@ -395,6 +421,7 @@
         <div class="stars" style="margin-bottom:7px">{{ r.rating|stars }}</div>
         {% if r.title %}<div class="review-title">{{ r.title }}</div>{% endif %}
         <div class="review-body">{{ r.body }}</div>
+        {% if r.helpful_count %}<div class="review-helpful">{{ r.helpful_count }} people found this helpful</div>{% endif %}
         {% if current_user and r.user_id == current_user.id %}
         <form method="post" action="{{ url_for('catalog.delete_review', slug=product.slug, review_id=r.id) }}"
               style="margin-top:14px" data-confirm="Delete your review? This cannot be undone.">
@@ -415,6 +442,16 @@
   </div>
   {% endif %}
 </div>
+
+{% if co_bought %}
+<div class="section-divider"></div>
+<h2 class="section-title" style="margin-bottom:20px">Frequently bought together</h2>
+<div class="product-grid">
+  {% for p in co_bought %}
+  {{ product_card(p) }}
+  {% endfor %}
+</div>
+{% endif %}
 
 {% if related %}
 <div class="section-divider"></div>
@@ -507,6 +544,48 @@
     };
     variantSelect.addEventListener('change', syncVariant);
     syncVariant();
+  }
+
+  // EMI selector: show the monthly + total figure for the chosen plan.
+  const emiStrip = document.getElementById('emiStrip');
+  const emiHint = document.getElementById('emiHint');
+  if (emiStrip && emiHint) {
+    emiStrip.addEventListener('click', (event) => {
+      const chip = event.target.closest('.emi-chip');
+      if (!chip) return;
+      emiStrip.querySelectorAll('.emi-chip').forEach((other) => other.classList.remove('on'));
+      chip.classList.add('on');
+      emiHint.textContent = `Selected: ${chip.dataset.per}/month for ${chip.dataset.months} months — repays ${chip.dataset.total}. No-cost EMI on your first order.`;
+    });
+  }
+
+  // Pincode delivery check: deterministic, metro pincodes get next-day.
+  const pinForm = document.getElementById('pinForm');
+  if (pinForm) {
+    const input = document.getElementById('pinInput');
+    const result = document.getElementById('pinResult');
+    const metro = new Set(['400001', '110001', '560001', '500001', '700001', '600001']);
+    const check = () => {
+      const pin = input.value.replace(/\D/g, '');
+      if (pin.length !== 6) {
+        result.textContent = 'Enter a valid 6-digit pincode.';
+        result.className = 'muted sm';
+        return;
+      }
+      const seed = parseInt(pin, 10) % 3;
+      if (metro.has(pin)) {
+        result.textContent = `Deliverable tomorrow — free delivery to ${pin}.`;
+      } else if (seed === 0) {
+        result.textContent = `Deliverable in 2-3 days to ${pin} — free delivery.`;
+      } else {
+        result.textContent = `Deliverable in 4-5 days to ${pin} — free delivery over {{ free_delivery_label }}.`;
+      }
+      result.className = 'pin-ok';
+    };
+    document.getElementById('pinCheck').addEventListener('click', check);
+    input.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter') { event.preventDefault(); check(); }
+    });
   }
 </script>
 {% endblock %}
