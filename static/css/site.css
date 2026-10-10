@@ -216,6 +216,16 @@ img { display: block; max-width: 100%; }
   display: grid; place-items: center;
 }
 
+/* Dark theme (default) shows the sun, light theme shows the moon. */
+.theme-btn .ico-moon { display: none; }
+[data-theme="light"] .theme-btn .ico-sun { display: none; }
+[data-theme="light"] .theme-btn .ico-moon { display: block; }
+.theme-btn.on {
+  border-color: rgba(245, 158, 11, 0.55);
+  color: var(--accent-amber);
+  box-shadow: 0 0 0 4px rgba(245, 158, 11, 0.12);
+}
+
 .avatar-chip {
   display: flex; align-items: center; gap: 9px;
   padding: 5px 12px 5px 5px;
@@ -383,9 +393,12 @@ img { display: block; max-width: 100%; }
 }
 .product-card:hover,
 .product-card:focus-within {
-  transform: translateY(-4px);
-  border-color: var(--border-hover);
-  box-shadow: var(--shadow-card);
+  transform: translateY(-7px);
+  border-color: rgba(129, 140, 248, 0.55);
+  box-shadow:
+    0 46px 90px -46px rgba(99, 102, 241, 0.7),
+    0 24px 60px -40px rgba(6, 182, 212, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.14);
 }
 .product-thumb {
   position: relative;
@@ -400,7 +413,18 @@ img { display: block; max-width: 100%; }
   transition: transform 0.6s cubic-bezier(0.16,1,0.3,1);
 }
 .product-card:hover .product-thumb img,
-.product-card:focus-within .product-thumb img { transform: scale(1.05); }
+.product-card:focus-within .product-thumb img { transform: scale(1.07); }
+/* Light sweep across the shot as the card comes up. */
+.product-thumb::after {
+  content: '';
+  position: absolute; inset: 0;
+  background: linear-gradient(115deg, transparent 32%, rgba(255,255,255,0.16) 46%, transparent 60%);
+  transform: translateX(-130%);
+  transition: transform 0.7s ease;
+  pointer-events: none;
+}
+.product-card:hover .product-thumb::after,
+.product-card:focus-within .product-thumb::after { transform: translateX(130%); }
 .thumb-glyph { font-size: 2.6rem; opacity: 0.85; }
 .product-badge {
   position: absolute; top: 10px; left: 10px;
@@ -437,9 +461,18 @@ img { display: block; max-width: 100%; }
   font-size: var(--fs-sm); color: var(--text-muted); line-height: 1.55;
   display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
 }
-.rating-row { display: flex; align-items: center; gap: 7px; font-size: var(--fs-sm); }
+.rating-row { display: flex; align-items: center; gap: 7px; font-size: var(--fs-sm); flex-wrap: wrap; }
 .stars { color: var(--accent-amber); letter-spacing: 1px; font-size: var(--fs-sm); }
 .rating-row .rc { color: var(--text-muted); }
+.ship-tag {
+  display: inline-flex; align-items: center;
+  font-size: 0.62rem; font-weight: 700;
+  color: var(--accent-emerald);
+  background: rgba(16, 185, 129, 0.12);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  padding: 2px 7px; border-radius: 5px;
+  white-space: nowrap;
+}
 .product-foot {
   margin-top: auto;
   display: flex; align-items: center; justify-content: space-between;
@@ -467,7 +500,11 @@ img { display: block; max-width: 100%; }
   transition: all 0.2s ease;
   flex-shrink: 0;
 }
-.add-btn:hover { background: var(--accent-primary); border-color: var(--accent-primary); color: #fff; transform: scale(1.06); }
+.add-btn:hover {
+  background: var(--accent-primary); border-color: var(--accent-primary); color: #fff;
+  transform: scale(1.1);
+  box-shadow: 0 8px 20px -6px rgba(99, 102, 241, 0.75), 0 0 0 4px rgba(99, 102, 241, 0.16);
+}
 .add-btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; background: var(--bg-surface-elevated); }
 .add-btn svg { width: 18px; height: 18px; stroke: currentColor; fill: none; stroke-width: 2.2; }
 

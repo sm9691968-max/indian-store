@@ -45,6 +45,7 @@ catalog_bp = Blueprint("catalog", __name__)
 
 PER_PAGE = 12
 COMPARE_LIMIT = 4
+DEALS_STRIP = 8
 RECENT_LIMIT = 12
 ALERT_KINDS = ("restock", "price")
 PRICE_BANDS = [
@@ -123,6 +124,67 @@ def _build_query():
     }
 
 
+def _deal_stmt():
+    """Active products currently marked down (compare_at > price)."""
+    return db.select(Product).where(
+        Product.is_active.is_(True),
+        Product.compare_at.isnot(None),
+        Product.compare_at > Product.price,
+    )
+
+
+@catalog_bp.get("/deals")
+def deals():
+    sort = request.args.get("sort", "discount")
+    stmt = _deal_stmt()
+
+    if sort == "price_asc":
+        stmt = stmt.order_by(Product.price.asc())
+    elif sort == "price_desc":
+        stmt = stmt.order_by(Product.price.desc())
+    elif sort == "rating":
+        stmt = stmt.order_by(Product.rating.desc(), Product.review_count.desc())
+    elif sort == "popular":
+        stmt = stmt.order_by(Product.sold_count.desc())
+    elif sort == "newest":
+        stmt = stmt.order_by(Product.created_at.desc())
+    else:
+        # Smallest ratio of sale price to original = deepest savings first.
+        sort = "discount"
+        stmt = stmt.order_by((Product.price / Product.compare_at).asc())
+
+    page = max(1, request.args.get("page", type=int) or 1)
+    total = db.session.scalar(
+        db.select(func.count()).select_from(stmt.order_by(None).subquery())
+    ) or 0
+    pages = max(1, -(-total // PER_PAGE))
+    page = min(page, pages)
+
+    products = db.session.scalars(
+        stmt.limit(PER_PAGE).offset((page - 1) * PER_PAGE)
+    ).all()
+
+    max_pct = db.session.scalar(
+        db.select(func.max(100 - (Product.price * 100 / Product.compare_at)))
+        .where(
+            Product.is_active.is_(True),
+            Product.compare_at.isnot(None),
+            Product.compare_at > Product.price,
+        )
+    ) or 0
+
+    return render_template(
+        "catalog/deals.html",
+        products=products,
+        sort=sort,
+        page=page,
+        pages=pages,
+        total=total,
+        max_pct=int(round(float(max_pct))),
+        wish_ids=wishlist_ids(current_user()),
+    )
+
+
 @catalog_bp.get("/")
 def index():
     stmt, filters = _build_query()
@@ -157,11 +219,37 @@ def index():
         ).all()
     ]
 
+    deals = db.session.scalars(
+        _deal_stmt()
+        .order_by((Product.price / Product.compare_at).asc())
+        .limit(DEALS_STRIP)
+    ).all()
+
+    # The promo strip and category rack only belong on the unfiltered landing
+    # page: on a filtered/search result they are noise and they pollute the
+    # price-band contract a listing page is expected to hold.
+    show_deals = (
+        page == 1
+        and filters["sort"] == "featured"
+        and not any(
+            (
+                filters["q"],
+                filters["category"],
+                filters["price"],
+                filters["brand"],
+                filters["rating"],
+                filters["stock"],
+            )
+        )
+    )
+
     return render_template(
         "catalog/index.html",
         products=products,
         categories=categories,
         brands=brands,
+        deals=deals,
+        show_deals=show_deals,
         price_bands=PRICE_BANDS,
         filters=filters,
         page=page,

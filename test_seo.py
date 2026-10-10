@@ -67,7 +67,7 @@ try:
 except Exception as exc:
     check("sitemap is well-formed XML", False, str(exc))
 check("sitemap has lastmod", "<lastmod>" in xml)
-check("sitemap url count", xml.count("<loc>") == 2018, f"got {xml.count('<loc>')}")
+check("sitemap url count", xml.count("<loc>") == 2019, f"got {xml.count('<loc>')}")
 check("no unescaped ampersands", not re.search(r"&(?!amp;|lt;|gt;|quot;|apos;|#)", xml))
 
 robots = client.get("/robots.txt").get_data(as_text=True)

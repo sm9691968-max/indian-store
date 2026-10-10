@@ -86,6 +86,7 @@ def sitemap():
 
     urls = [
         (url_for("catalog.index", _external=True), "daily", "1.0"),
+        (url_for("catalog.deals", _external=True), "daily", "0.7"),
         (url_for("catalog.recently_viewed", _external=True), "daily", "0.4"),
         (url_for("catalog.compare", _external=True), "weekly", "0.3"),
     ]

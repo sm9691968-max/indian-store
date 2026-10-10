@@ -64,6 +64,12 @@
       </form>
 
       <div class="header-actions">
+        <button class="icon-btn theme-btn" type="button" id="themeToggle" title="Toggle light and dark theme"
+                aria-label="Toggle light and dark theme" aria-pressed="false">
+          <svg class="ico-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"></circle><line x1="12" y1="2" x2="12" y2="4"></line><line x1="12" y1="20" x2="12" y2="22"></line><line x1="4.93" y1="4.93" x2="6.34" y2="6.34"></line><line x1="17.66" y1="17.66" x2="19.07" y2="19.07"></line><line x1="2" y1="12" x2="4" y2="12"></line><line x1="20" y1="12" x2="22" y2="12"></line><line x1="6.34" y1="17.66" x2="4.93" y2="19.07"></line><line x1="19.07" y1="4.93" x2="17.66" y2="6.34"></line></svg>
+          <svg class="ico-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
+        </button>
+
         <form class="currency-form" method="post" action="{{ url_for('set_currency') }}">
   <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
           <label class="sr-only" for="currencySelect">Currency</label>
@@ -134,6 +140,7 @@
       <div>&copy; {{ now_year }} Indian Store &middot; Demo build</div>
       <div class="footer-links">
         <a href="{{ url_for('catalog.index') }}">Shop</a>
+        <a href="{{ url_for('catalog.deals') }}">Deals</a>
         {% if current_user %}<a href="{{ url_for('catalog.wishlist') }}">Wishlist</a>{% endif %}
         {% if current_user %}<a href="{{ url_for('cart.orders') }}">Orders</a>{% endif %}
         {% if current_user and current_user.is_admin %}<a href="{{ url_for('admin.dashboard') }}">Admin</a>{% endif %}
@@ -298,6 +305,25 @@
       document.addEventListener('click', (event) => {
         if (!form.contains(event.target)) close();
       });
+    })();
+
+    // Light / dark toggle — the head script already applies the stored choice
+    // before first paint, this only flips it and keeps the button in sync.
+    (function themeToggle() {
+      const btn = document.getElementById('themeToggle');
+      if (!btn) return;
+      const sync = () => {
+        const light = document.documentElement.getAttribute('data-theme') === 'light';
+        btn.classList.toggle('on', light);
+        btn.setAttribute('aria-pressed', light ? 'true' : 'false');
+      };
+      btn.addEventListener('click', () => {
+        const light = document.documentElement.getAttribute('data-theme') === 'light';
+        document.documentElement.setAttribute('data-theme', light ? 'dark' : 'light');
+        localStorage.setItem('indian-store-theme', light ? 'dark' : 'light');
+        sync();
+      });
+      sync();
     })();
   </script>
 </body>

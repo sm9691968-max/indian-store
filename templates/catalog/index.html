@@ -1,67 +1,6 @@
 {% extends "base.html" %}
+{% from "catalog/_product_card.html" import price_block, product_card with context %}
 {% block title %}Indian Store — Next-Gen Marketplace{% endblock %}
-
-{% macro price_block(p) %}
-<span class="price-block">
-  {% if p.discount_pct %}<span class="pct-off">-{{ p.discount_pct }}%</span>{% endif %}
-  <span class="price">
-    {{ p.price|money }}
-    {% if p.compare_at and p.compare_at > p.price %}<small>{{ p.compare_at|money }}</small>{% endif %}
-  </span>
-</span>
-{% endmacro %}
-
-{% macro product_card(p) %}
-<article class="product-card fade-up">
-  <a class="product-thumb" href="{{ url_for('catalog.product_detail', slug=p.slug) }}">
-    {% if p.badge %}<span class="product-badge">{{ p.badge }}</span>{% endif %}
-    {% if p.stock == 0 %}<span class="out-chip">Sold out</span>
-    {% elif p.is_low_stock %}<span class="out-chip" style="background:rgba(245,158,11,0.92)">Only {{ p.stock }}</span>{% endif %}
-    {% if p.image_url %}
-      <img src="{{ p.image_url }}" alt="{{ p.name }}" loading="lazy">
-    {% else %}
-      <span class="thumb-glyph">{{ p.category.name[:1] if p.category else 'N' }}</span>
-    {% endif %}
-  </a>
-
-  {% if current_user %}
-  <form action="{{ url_for('catalog.toggle_wishlist', product_id=p.id) }}" method="post" data-wishlist>
-  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-    <button class="wish-btn {% if p.id in wish_ids %}on{% endif %}" title="Save to wishlist"
-            aria-label="Save {{ p.name }} to wishlist">
-      <svg viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
-    </button>
-  </form>
-  {% endif %}
-
-  <div class="product-body">
-    <span class="product-cat">{{ p.brand }} &middot; {{ p.category.name if p.category else 'General' }}</span>
-    <a class="product-name" href="{{ url_for('catalog.product_detail', slug=p.slug) }}">{{ p.name }}</a>
-    <p class="product-desc">{{ p.description }}</p>
-    <div class="rating-row">
-      <span class="stars">{{ p.rating|stars }}</span>
-      <span class="rc">{{ '%.1f'|format(p.rating) }} ({{ p.review_count }})</span>
-      {% if p.sold_count %}<span class="rc">&middot; {{ p.sold_count }} sold</span>{% endif %}
-    </div>
-    <div class="product-foot">
-      {{ price_block(p) }}
-      {% if current_user %}
-      <form action="{{ url_for('cart.add', product_id=p.id) }}" method="post">
-  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-        <input type="hidden" name="quantity" value="1">
-        <button class="add-btn" type="submit" title="Add to cart" {% if p.stock == 0 %}disabled{% endif %}>
-          <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-        </button>
-      </form>
-      {% else %}
-      <a class="add-btn" href="{{ url_for('auth.login') }}" title="Sign in to buy">
-        <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-      </a>
-      {% endif %}
-    </div>
-  </div>
-</article>
-{% endmacro %}
 
 {% block content %}
 <section class="hero fade-up">
@@ -74,6 +13,52 @@
     <div class="hero-stat"><div class="v">30d</div><div class="k">Free returns</div></div>
   </div>
 </section>
+
+{% if deals and show_deals %}
+<section class="deal-strip fade-up" aria-label="Deals of the day">
+  <div class="deal-head">
+    <div>
+      <span class="deal-kicker" style="color: var(--accent-rose)">Today only</span>
+      <h2 class="section-title">Deals of the day</h2>
+    </div>
+    <a class="deal-more" href="{{ url_for('catalog.deals') }}">
+      View all deals
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+    </a>
+  </div>
+  <div class="deal-track">
+    {% for p in deals %}
+    <a class="deal-card" href="{{ url_for('catalog.product_detail', slug=p.slug) }}">
+      <span class="deal-thumb">
+        {% if p.image_url %}
+          <img src="{{ p.image_url }}" alt="{{ p.name }}" loading="lazy">
+        {% else %}
+          <span class="thumb-glyph">{{ p.category.name[:1] if p.category else 'D' }}</span>
+        {% endif %}
+        <span class="deal-tag">-{{ p.discount_pct }}%</span>
+      </span>
+      <span class="deal-name">{{ p.name }}</span>
+      <span class="deal-foot">
+        <span class="price">{{ p.price|money }}</span>
+        {% if p.compare_at %}<small>{{ p.compare_at|money }}</small>{% endif %}
+      </span>
+    </a>
+    {% endfor %}
+  </div>
+</section>
+{% endif %}
+
+{% if show_deals %}
+<section class="cat-rack fade-up" aria-label="Shop by category">
+  {% for c in categories %}
+  <a class="cat-tile" href="{{ url_for('catalog.index', category=c.slug) }}" style="--cat-accent: {{ c.accent }}">
+    <span class="cat-name">{{ c.name }}</span>
+    <span class="cat-blurb">{{ c.blurb }}</span>
+    <span class="cat-count">{{ c.product_count }} products</span>
+  </a>
+  {% endfor %}
+</section>
+{% endif %}
 
 <div class="catalog-layout">
   {# ---------------- Filters ---------------- #}
