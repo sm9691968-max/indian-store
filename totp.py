@@ -1,6 +1,7 @@
 """TOTP (RFC 6238) and recovery-code handling, implemented on the standard library."""
 
 import base64
+import binascii
 import hashlib
 import hmac
 import secrets
@@ -43,9 +44,13 @@ def verify(secret: str, token: str, at: float | None = None) -> bool:
     if not token.isdigit() or len(token) != DIGITS:
         return False
     counter = int((at if at is not None else time.time()) // PERIOD)
-    for step in range(-WINDOW, WINDOW + 1):
-        if hmac.compare_digest(_hotp(secret, counter + step), token):
-            return True
+    try:
+        for step in range(-WINDOW, WINDOW + 1):
+            if hmac.compare_digest(_hotp(secret, counter + step), token):
+                return True
+    except (binascii.Error, ValueError):
+        # A malformed secret can never match a well-formed token.
+        return False
     return False
 
 

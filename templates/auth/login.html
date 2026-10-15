@@ -1209,7 +1209,7 @@
             <label class="switch-label">
               <input type="checkbox" id="acceptTermsCheck" name="accept_terms" value="1">
               <span class="custom-switch"></span>
-              <span>I accept the terms of sale</span>
+              <span>I accept the <a href="{{ url_for('catalog.policies') }}" target="_blank" rel="noopener">terms of sale</a></span>
             </label>
             {% else %}
             <label class="switch-label">

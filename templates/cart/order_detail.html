@@ -23,8 +23,13 @@
     </div>
     {% endif %}
   </div>
-  <div style="display:flex; gap:10px; align-items:center">
+  <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap">
     <a class="btn-ghost" href="{{ url_for('cart.orders') }}">All orders</a>
+    <a class="btn-ghost" href="{{ url_for('cart.packing_slip', reference=order.reference) }}" target="_blank" rel="noopener">Packing slip</a>
+    <form method="post" action="{{ url_for('cart.reorder', reference=order.reference) }}">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <button class="btn-ghost" type="submit">Buy again</button>
+    </form>
     {% if order.is_cancellable %}
     <form method="post" action="{{ url_for('cart.cancel_order', reference=order.reference) }}"
           data-confirm="Cancel this order? Stock will be returned to inventory.">

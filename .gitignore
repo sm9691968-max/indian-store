@@ -12,3 +12,15 @@ instance/
 # Runtime logs from `python run.py`
 *.log
 *.err
+
+# Tool caches
+.pytest_cache/
+.ruff_cache/
+
+# Local secrets and environment overrides
+.env
+
+# Local dev tooling (not part of the app)
+.reticle/
+.reticle.json
+.21st/

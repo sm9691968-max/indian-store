@@ -2,7 +2,7 @@ from datetime import datetime, timezone
 from decimal import Decimal
 
 from sqlalchemy.ext.hybrid import hybrid_property
-from werkzeug.security import generate_password_hash, check_password_hash
+from werkzeug.security import check_password_hash, generate_password_hash
 
 from extensions import db
 
@@ -158,12 +158,12 @@ class Address(db.Model):
     line2 = db.Column(db.String(180), default="", nullable=False)
     city = db.Column(db.String(80), nullable=False)
     postal = db.Column(db.String(20), nullable=False)
-    country = db.Column(db.String(80), default="United States", nullable=False)
+    country = db.Column(db.String(80), default="India", nullable=False)
     phone = db.Column(db.String(32), default="", nullable=False)
     is_default = db.Column(db.Boolean, default=False, nullable=False)
     created_at = db.Column(db.DateTime(timezone=True), default=utcnow, nullable=False)
 
-    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False, index=True)
     user = db.relationship("User", back_populates="addresses")
 
     @property
@@ -211,7 +211,7 @@ class Product(db.Model):
     warranty_years = db.Column(db.Integer, default=2, nullable=False)
     created_at = db.Column(db.DateTime(timezone=True), default=utcnow, nullable=False)
 
-    category_id = db.Column(db.Integer, db.ForeignKey("categories.id"))
+    category_id = db.Column(db.Integer, db.ForeignKey("categories.id"), index=True)
     category = db.relationship("Category", back_populates="products", lazy="selectin")
 
     reviews = db.relationship(
@@ -307,7 +307,12 @@ class Product(db.Model):
         return [q for q in self.questions if q.answer]
 
     def recalc_rating(self) -> None:
-        ratings = [r.rating for r in self.reviews]
+        # Query the table rather than trusting self.reviews: the relationship may
+        # have been loaded (lazy="selectin") before a review was added or removed
+        # in this same session, which would leave the aggregate stale.
+        ratings = list(
+            db.session.scalars(db.select(Review.rating).where(Review.product_id == self.id))
+        )
         self.review_count = len(ratings)
         self.rating = round(sum(ratings) / len(ratings), 1) if ratings else 0.0
 
@@ -329,7 +334,7 @@ class ProductImage(db.Model):
     position = db.Column(db.Integer, default=0, nullable=False)
     is_primary = db.Column(db.Boolean, default=False, nullable=False)
 
-    product_id = db.Column(db.Integer, db.ForeignKey("products.id"), nullable=False)
+    product_id = db.Column(db.Integer, db.ForeignKey("products.id"), nullable=False, index=True)
     product = db.relationship("Product", back_populates="images")
 
 
@@ -343,7 +348,7 @@ class ProductVariant(db.Model):
     sku_suffix = db.Column(db.String(20), default="", nullable=False)
     position = db.Column(db.Integer, default=0, nullable=False)
 
-    product_id = db.Column(db.Integer, db.ForeignKey("products.id"), nullable=False)
+    product_id = db.Column(db.Integer, db.ForeignKey("products.id"), nullable=False, index=True)
     product = db.relationship("Product", back_populates="variants")
 
     @property
@@ -372,9 +377,9 @@ class ProductQuestion(db.Model):
     created_at = db.Column(db.DateTime(timezone=True), default=utcnow, nullable=False)
     answered_at = db.Column(db.DateTime(timezone=True))
 
-    product_id = db.Column(db.Integer, db.ForeignKey("products.id"), nullable=False)
-    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
-    answered_by_id = db.Column(db.Integer, db.ForeignKey("users.id"))
+    product_id = db.Column(db.Integer, db.ForeignKey("products.id"), nullable=False, index=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False, index=True)
+    answered_by_id = db.Column(db.Integer, db.ForeignKey("users.id"), index=True)
 
     product = db.relationship("Product", back_populates="questions")
     user = db.relationship("User", foreign_keys=[user_id])
@@ -413,8 +418,8 @@ class Review(db.Model):
     created_at = db.Column(db.DateTime(timezone=True), default=utcnow, nullable=False)
     updated_at = db.Column(db.DateTime(timezone=True), default=utcnow, nullable=False)
 
-    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
-    product_id = db.Column(db.Integer, db.ForeignKey("products.id"), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False, index=True)
+    product_id = db.Column(db.Integer, db.ForeignKey("products.id"), nullable=False, index=True)
 
     user = db.relationship("User", back_populates="reviews")
     product = db.relationship("Product", back_populates="reviews")
@@ -434,8 +439,8 @@ class WishlistItem(db.Model):
     note = db.Column(db.String(160), default="", nullable=False)
     added_at = db.Column(db.DateTime(timezone=True), default=utcnow, nullable=False)
 
-    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
-    product_id = db.Column(db.Integer, db.ForeignKey("products.id"), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False, index=True)
+    product_id = db.Column(db.Integer, db.ForeignKey("products.id"), nullable=False, index=True)
 
     product = db.relationship("Product", lazy="selectin")
 
@@ -452,8 +457,8 @@ class StockAlert(db.Model):
     notified = db.Column(db.Boolean, default=False, nullable=False)
     created_at = db.Column(db.DateTime(timezone=True), default=utcnow, nullable=False)
 
-    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
-    product_id = db.Column(db.Integer, db.ForeignKey("products.id"), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False, index=True)
+    product_id = db.Column(db.Integer, db.ForeignKey("products.id"), nullable=False, index=True)
 
     product = db.relationship("Product", lazy="selectin")
 
@@ -524,9 +529,9 @@ class GiftCard(db.Model):
     expires_at = db.Column(db.DateTime(timezone=True))
     created_at = db.Column(db.DateTime(timezone=True), default=utcnow, nullable=False)
 
-    user_id = db.Column(db.Integer, db.ForeignKey("users.id"))
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), index=True)
     user = db.relationship("User", foreign_keys=[user_id])
-    created_by_id = db.Column(db.Integer, db.ForeignKey("users.id"))
+    created_by_id = db.Column(db.Integer, db.ForeignKey("users.id"), index=True)
     created_by = db.relationship("User", foreign_keys=[created_by_id])
 
     @property
@@ -556,8 +561,8 @@ class LoyaltyEvent(db.Model):
     balance_after = db.Column(db.Integer, default=0, nullable=False)
     created_at = db.Column(db.DateTime(timezone=True), default=utcnow, nullable=False)
 
-    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
-    order_id = db.Column(db.Integer, db.ForeignKey("orders.id"))
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False, index=True)
+    order_id = db.Column(db.Integer, db.ForeignKey("orders.id"), index=True)
 
     user = db.relationship("User")
     order = db.relationship("Order")
@@ -574,11 +579,11 @@ class CartItem(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     quantity = db.Column(db.Integer, default=1, nullable=False)
     is_saved = db.Column(db.Boolean, default=False, nullable=False)
-    variant_id = db.Column(db.Integer, db.ForeignKey("product_variants.id"))
+    variant_id = db.Column(db.Integer, db.ForeignKey("product_variants.id"), index=True)
     added_at = db.Column(db.DateTime(timezone=True), default=utcnow, nullable=False)
 
-    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
-    product_id = db.Column(db.Integer, db.ForeignKey("products.id"), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False, index=True)
+    product_id = db.Column(db.Integer, db.ForeignKey("products.id"), nullable=False, index=True)
 
     user = db.relationship("User", back_populates="cart_items")
     product = db.relationship("Product", lazy="selectin")
@@ -586,7 +591,13 @@ class CartItem(db.Model):
 
     @property
     def unit_price(self) -> Decimal:
-        return self.variant.price if self.variant else Decimal(self.product.price)
+        # Defensive: a row whose product vanished (orphaned reference) must not
+        # 500 the cart page — it prices at zero and is filtered out by the views.
+        if self.variant is not None:
+            return self.variant.price
+        if self.product is not None:
+            return Decimal(self.product.price)
+        return Decimal("0.00")
 
     @property
     def line_total(self) -> float:
@@ -594,11 +605,17 @@ class CartItem(db.Model):
 
     @property
     def in_stock(self) -> bool:
-        return (self.variant.stock if self.variant else self.product.stock) >= self.quantity
+        if self.variant is not None:
+            return self.variant.stock >= self.quantity
+        if self.product is not None:
+            return self.product.stock >= self.quantity
+        return False
 
     @property
     def max_quantity(self) -> int:
-        return self.variant.stock if self.variant else self.product.stock
+        if self.variant is not None:
+            return self.variant.stock
+        return self.product.stock if self.product is not None else 0
 
 
 class Order(db.Model):
@@ -631,7 +648,7 @@ class Order(db.Model):
     created_at = db.Column(db.DateTime(timezone=True), default=utcnow, nullable=False)
     updated_at = db.Column(db.DateTime(timezone=True), default=utcnow, nullable=False)
 
-    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False, index=True)
     user = db.relationship("User", back_populates="orders")
 
     items = db.relationship(
@@ -674,7 +691,7 @@ class OrderEvent(db.Model):
     location = db.Column(db.String(80), default="", nullable=False)
     created_at = db.Column(db.DateTime(timezone=True), default=utcnow, nullable=False)
 
-    order_id = db.Column(db.Integer, db.ForeignKey("orders.id"), nullable=False)
+    order_id = db.Column(db.Integer, db.ForeignKey("orders.id"), nullable=False, index=True)
     order = db.relationship("Order", back_populates="events")
 
 
@@ -687,9 +704,9 @@ class OrderItem(db.Model):
     product_name = db.Column(db.String(160), default="", nullable=False)
     variant_name = db.Column(db.String(60), default="", nullable=False)
 
-    order_id = db.Column(db.Integer, db.ForeignKey("orders.id"), nullable=False)
-    product_id = db.Column(db.Integer, db.ForeignKey("products.id"), nullable=False)
-    variant_id = db.Column(db.Integer, db.ForeignKey("product_variants.id"))
+    order_id = db.Column(db.Integer, db.ForeignKey("orders.id"), nullable=False, index=True)
+    product_id = db.Column(db.Integer, db.ForeignKey("products.id"), nullable=False, index=True)
+    variant_id = db.Column(db.Integer, db.ForeignKey("product_variants.id"), index=True)
 
     order = db.relationship("Order", back_populates="items")
     product = db.relationship("Product", lazy="selectin")
@@ -713,9 +730,9 @@ class SupportTicket(db.Model):
     created_at = db.Column(db.DateTime(timezone=True), default=utcnow, nullable=False)
     updated_at = db.Column(db.DateTime(timezone=True), default=utcnow, nullable=False)
 
-    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False, index=True)
     user = db.relationship("User")
-    order_id = db.Column(db.Integer, db.ForeignKey("orders.id"))
+    order_id = db.Column(db.Integer, db.ForeignKey("orders.id"), index=True)
     order = db.relationship("Order")
     messages = db.relationship(
         "TicketMessage",
@@ -742,9 +759,9 @@ class TicketMessage(db.Model):
     is_staff = db.Column(db.Boolean, default=False, nullable=False)
     created_at = db.Column(db.DateTime(timezone=True), default=utcnow, nullable=False)
 
-    ticket_id = db.Column(db.Integer, db.ForeignKey("support_tickets.id"), nullable=False)
+    ticket_id = db.Column(db.Integer, db.ForeignKey("support_tickets.id"), nullable=False, index=True)
     ticket = db.relationship("SupportTicket", back_populates="messages")
-    author_id = db.Column(db.Integer, db.ForeignKey("users.id"))
+    author_id = db.Column(db.Integer, db.ForeignKey("users.id"), index=True)
     author = db.relationship("User")
 
 
@@ -758,7 +775,7 @@ class AuditLog(db.Model):
     detail = db.Column(db.String(300), default="", nullable=False)
     created_at = db.Column(db.DateTime(timezone=True), default=utcnow, nullable=False)
 
-    actor_id = db.Column(db.Integer, db.ForeignKey("users.id"))
+    actor_id = db.Column(db.Integer, db.ForeignKey("users.id"), index=True)
     actor = db.relationship("User")
 
 
@@ -773,7 +790,7 @@ class EmailLog(db.Model):
     read_at = db.Column(db.DateTime(timezone=True))
     created_at = db.Column(db.DateTime(timezone=True), default=utcnow, nullable=False)
 
-    user_id = db.Column(db.Integer, db.ForeignKey("users.id"))
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), index=True)
     user = db.relationship("User")
 
 
@@ -794,5 +811,5 @@ class ViewEvent(db.Model):
     viewed_at = db.Column(db.DateTime(timezone=True), default=utcnow, nullable=False)
     created_at = db.Column(db.DateTime(timezone=True), default=utcnow, nullable=False)
 
-    user_id = db.Column(db.Integer, db.ForeignKey("users.id"))
-    product_id = db.Column(db.Integer, db.ForeignKey("products.id"), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), index=True)
+    product_id = db.Column(db.Integer, db.ForeignKey("products.id"), nullable=False, index=True)

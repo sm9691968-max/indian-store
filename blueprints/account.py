@@ -2,37 +2,33 @@ import secrets
 
 from flask import (
     Blueprint,
+    abort,
+    flash,
+    redirect,
     render_template,
     request,
-    redirect,
-    url_for,
     session,
-    flash,
-    abort,
-    jsonify,
+    url_for,
 )
 from sqlalchemy import func
 from sqlalchemy.exc import IntegrityError
 
+import totp
 from extensions import db
+from helpers import auth_fingerprint, current_user, login_required, loyalty_summary
 from models import (
-    CANCELLED,
     Address,
     GiftCard,
     LoyaltyEvent,
     Order,
-    Product,
     Review,
     StockAlert,
     SupportTicket,
     TicketMessage,
     User,
-    ViewEvent,
     WishlistItem,
     utcnow,
 )
-from helpers import current_user, login_required, loyalty_summary, wants_json
-import totp
 
 account_bp = Blueprint("account", __name__, url_prefix="/account")
 
@@ -146,6 +142,7 @@ def security():
         db.session.commit()
         session.clear()
         session["user_id"] = user.id
+        session["auth_fp"] = auth_fingerprint(user)
         session.permanent = True
         flash("Password changed — other sessions were signed out.", "success")
         return redirect(url_for("account.security"))

@@ -4,19 +4,18 @@ import json
 from datetime import datetime, timezone
 from urllib.parse import urlencode
 
-from flask import Blueprint, Response, render_template, request, url_for, abort
+from flask import Blueprint, Response, request, url_for
 from markupsafe import Markup
-from sqlalchemy import func
 
 from extensions import db
-from models import Category, Product, ORDER_FLOW, CANCELLED
+from models import Category, Product
 
 seo_bp = Blueprint("seo", __name__)
 
 SITE_NAME = "Indian Store"
 SITE_DESCRIPTION = (
-    "Indian Store is a curated marketplace for premium keyboards, audio, displays and desk gear, "
-    "with verified reviews, real-time stock and free delivery over $150."
+    "Indian Store is a curated marketplace for premium keyboards, audio, displays and desk gear — "
+    "with verified reviews, real-time stock and next-day metro delivery."
 )
 
 # Query parameters that change what is on the page. A filtered or sorted
@@ -100,7 +99,6 @@ def sitemap():
         for p in products
     ]
 
-    from flask import current_app
     from xml.sax.saxutils import escape
 
     now = datetime.now(timezone.utc).strftime("%Y-%m-%d")
@@ -125,9 +123,8 @@ def sitemap():
 @seo_bp.get("/social-card.png")
 def social_card():
     """A tiny generated PNG so /og:image never 404s during link previews."""
-    import base64
-    import zlib
     import struct
+    import zlib
 
     width, height = 1200, 630
     # A dark slate card with a teal diagonal accent band.
@@ -164,9 +161,11 @@ def social_card():
 @seo_bp.app_context_processor
 def seo_meta():
     """Every template can call json_ld() / og_image() for its page."""
+    from helpers import free_delivery_label
+
     return {
         "site_name": SITE_NAME,
-        "site_description": SITE_DESCRIPTION,
+        "site_description": f"{SITE_DESCRIPTION} Free delivery on orders over {free_delivery_label()}.",
         "og_image": url_for("seo.social_card", _external=True),
         "canonical_url": canonical_url(),
     }
@@ -189,7 +188,7 @@ def json_ld(payload: dict):
 
 @seo_bp.app_template_filter("money_display")
 def money_display(value) -> str:
-    from helpers import convert, currency_symbol, currency_code
+    from helpers import convert, currency_symbol
 
     amount = convert(value)
     return f"{currency_symbol()}{amount:,.2f}"

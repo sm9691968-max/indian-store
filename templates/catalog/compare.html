@@ -11,10 +11,13 @@
         <p class="muted">Up to {{ limit }} products, so you can weigh spec sheets without juggling tabs.</p>
       </div>
       {% if products %}
-      <form method="post" action="{{ url_for('catalog.compare_clear') }}">
+      <div style="display:flex; gap:10px; flex-wrap:wrap">
+        <button type="button" class="btn btn-ghost" data-copy="{{ url_for('catalog.compare', items=products|map(attribute='slug')|join(','), _external=True) }}">Copy share link</button>
+        <form method="post" action="{{ url_for('catalog.compare_clear') }}">
   <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-        <button class="btn btn-ghost" type="submit">Clear all</button>
-      </form>
+          <button class="btn btn-ghost" type="submit">Clear all</button>
+        </form>
+      </div>
       {% endif %}
     </div>
   </div>
@@ -61,7 +64,7 @@
           </div>
           <div><dt>Sold</dt><dd>{{ p.sold_count }} units</dd></div>
           <div><dt>Warranty</dt><dd>{{ p.warranty_years }} year{{ '' if p.warranty_years == 1 else 's' }}</dd></div>
-          <div><dt>Delivery</dt><dd>{% if p.free_shipping %}Free{% else %}From $9.99{% endif %}</dd></div>
+          <div><dt>Delivery</dt><dd>{% if p.free_shipping %}Free{% else %}From {{ shipping_flat|money }}{% endif %}</dd></div>
         </dl>
         {% if p.specs %}
         <div class="compare-highlights">

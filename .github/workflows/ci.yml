@@ -1,0 +1,42 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    env:
+      APP_ENV: development
+      SECRET_KEY: ci-secret-not-used-in-production
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements-dev.txt
+
+      - name: Lint
+        run: ruff check .
+
+      - name: Migrations apply on a clean database
+        env:
+          APP_ENV: production
+          DATABASE_URL: sqlite:///ci-migrate.db
+        run: |
+          flask --app wsgi db upgrade
+          flask --app wsgi db current
+
+      - name: Test suites
+        run: |
+          python test_smoke.py
+          python test_seo.py
+          python test_security.py
+          python test_features.py

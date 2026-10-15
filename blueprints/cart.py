@@ -4,20 +4,38 @@ from decimal import Decimal
 
 from flask import (
     Blueprint,
-    render_template,
-    request,
-    redirect,
-    url_for,
-    session,
+    Response,
+    abort,
     flash,
     jsonify,
-    abort,
-    Response,
+    redirect,
+    render_template,
+    request,
+    session,
+    url_for,
 )
 from sqlalchemy import select
 
 from extensions import db
+from helpers import (
+    FREE_SHIPPING_THRESHOLD,
+    audit,
+    award_points,
+    cart_items,
+    currency_code,
+    current_user,
+    find_order,
+    log_email,
+    login_required,
+    points_for_spend,
+    quote_cart,
+    recommend_products,
+    safe_next,
+    saved_items,
+)
 from models import (
+    CANCELLED,
+    ORDER_FLOW,
     CartItem,
     Coupon,
     GiftCard,
@@ -25,25 +43,7 @@ from models import (
     OrderItem,
     Product,
     ProductVariant,
-    ORDER_FLOW,
-    CANCELLED,
     utcnow,
-)
-from helpers import (
-    current_user,
-    login_required,
-    quote_cart,
-    cart_items,
-    saved_items,
-    active_coupon,
-    audit,
-    award_points,
-    currency_code,
-    log_email,
-    points_for_spend,
-    safe_next,
-    recommend_products,
-    FREE_SHIPPING_THRESHOLD,
 )
 
 cart_bp = Blueprint("cart", __name__, url_prefix="/cart")
@@ -547,3 +547,128 @@ def invoice_csv(reference):
         mimetype="text/csv",
         headers={"Content-Disposition": f"attachment; filename={order.reference}.csv"},
     )
+
+
+@cart_bp.post("/buy-now/<int:product_id>")
+@login_required
+def buy_now(product_id):
+    """Add one line and jump straight to checkout, skipping the cart page."""
+    user = current_user()
+    product = db.session.get(Product, product_id)
+    if product is None or not product.is_active or product.stock < 1:
+        flash("That product is not available right now.", "error")
+        return redirect(url_for("catalog.index"))
+
+    qty = max(1, min(request.form.get("quantity", type=int) or 1, 20))
+    variant_id = request.form.get("variant_id", type=int)
+    variant = db.session.get(ProductVariant, variant_id) if variant_id else None
+    if variant is None or variant.product_id != product.id or variant.stock < 1:
+        # Drop a variant that does not belong to this product or is sold out, so
+        # the line is never pinned to a foreign or unavailable variant id.
+        variant = None
+        variant_id = None
+    available = variant.stock if variant else product.stock
+
+    item = db.session.scalar(
+        db.select(CartItem).where(
+            CartItem.user_id == user.id,
+            CartItem.product_id == product.id,
+            CartItem.variant_id == variant_id,
+        )
+    )
+    if item:
+        item.quantity = min(item.quantity + qty, available)
+        item.is_saved = False
+    else:
+        db.session.add(
+            CartItem(
+                user_id=user.id,
+                product_id=product.id,
+                variant_id=variant_id,
+                quantity=min(qty, available),
+            )
+        )
+    db.session.commit()
+    return redirect(url_for("cart.checkout"))
+
+
+@cart_bp.post("/reorder/<reference>")
+@login_required
+def reorder(reference):
+    """Drop every still-available line from a past order back into the cart."""
+    user = current_user()
+    order = db.session.scalar(db.select(Order).filter_by(reference=reference))
+    if order is None:
+        abort(404)
+    if order.user_id != user.id and not user.is_admin:
+        abort(403)
+
+    added = skipped = 0
+    for line in order.items:
+        product = db.session.get(Product, line.product_id) if line.product_id else None
+        if product is None or not product.is_active or product.stock < 1:
+            skipped += 1
+            continue
+        variant_id = line.variant_id or None
+        existing = db.session.scalar(
+            db.select(CartItem).where(
+                CartItem.user_id == user.id,
+                CartItem.product_id == product.id,
+                CartItem.variant_id == variant_id,
+            )
+        )
+        ceiling = min(product.stock, 20)
+        if existing:
+            existing.quantity = min(existing.quantity + line.quantity, ceiling)
+            existing.is_saved = False
+        else:
+            db.session.add(
+                CartItem(
+                    user_id=user.id,
+                    product_id=product.id,
+                    variant_id=variant_id,
+                    quantity=min(line.quantity, ceiling),
+                )
+            )
+        added += 1
+    db.session.commit()
+
+    if added:
+        note = f"Added {added} item{'s' if added != 1 else ''} back to your cart."
+        if skipped:
+            note += f" {skipped} item{'s are' if skipped != 1 else ' is'} no longer available."
+        flash(note, "success")
+        return redirect(url_for("cart.view"))
+    flash("None of those items are available to reorder right now.", "info")
+    return redirect(url_for("cart.order_detail", reference=reference))
+
+
+@cart_bp.route("/track", methods=["GET", "POST"])
+def track():
+    """Guest order tracking: reference plus email or postal code, no sign-in."""
+    reference = (request.args.get("reference") or "").strip()
+    order = None
+    if request.method == "POST":
+        reference = (request.form.get("reference") or "").strip()
+        email = (request.form.get("email") or "").strip()
+        postal = (request.form.get("postal") or "").strip()
+        if not reference:
+            flash("Enter your order reference to look it up.", "error")
+        else:
+            order = find_order(reference, email=email, postal=postal)
+            if order is None:
+                flash("We could not find an order with those details.", "error")
+    return render_template("cart/track.html", order=order, reference=reference)
+
+
+@cart_bp.get("/orders/<reference>/slip")
+@login_required
+def packing_slip(reference):
+    """A printable packing slip to tuck into the parcel."""
+    user = current_user()
+    order = db.session.scalar(db.select(Order).filter_by(reference=reference))
+    if order is None:
+        abort(404)
+    if order.user_id != user.id and not user.is_admin:
+        abort(403)
+    return render_template("cart/packing_slip.html", order=order)

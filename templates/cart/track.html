@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+{% block title %}Track your order — Indian Store{% endblock %}
+{% block meta %}
+  <meta name="description" content="Track an Indian Store order with your order reference and email — no sign-in required.">
+  <meta name="robots" content="noindex, follow">
+{% endblock %}
+
+{% block content %}
+<section class="page-head">
+  <div class="wrap">
+    <nav class="crumbs"><a href="{{ url_for('catalog.index') }}">Home</a> / Track order</nav>
+    <div class="feature-hero">
+      <h1>Track your order</h1>
+      <p>Enter your order reference and the email or postal code used at checkout.</p>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap" style="max-width:720px">
+    <form class="track-form panel" method="post" action="{{ url_for('cart.track') }}" style="padding:22px">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div class="field">
+        <label for="reference">Order reference</label>
+        <input type="text" id="reference" name="reference" value="{{ reference }}" placeholder="e.g. IS-8F2A19" required autocomplete="off">
+      </div>
+      <div class="field">
+        <label for="email">Email</label>
+        <input type="email" id="email" name="email" placeholder="you@example.com" autocomplete="email">
+      </div>
+      <div class="field">
+        <label for="postal">Postal code</label>
+        <input type="text" id="postal" name="postal" placeholder="Optional — if you don't know the email" autocomplete="postal-code">
+      </div>
+      <div>
+        <button class="btn-primary" type="submit">Track order</button>
+      </div>
+    </form>
+
+    {% if order %}
+    <div class="track-result panel" style="padding:22px">
+      <div class="pk-meta">
+        <div>
+          <div class="muted sm">Order</div>
+          <div><b class="mono">{{ order.reference }}</b></div>
+        </div>
+        <div>
+          <div class="muted sm">Status</div>
+          <div><b>{{ order.status }}</b></div>
+        </div>
+        <div>
+          <div class="muted sm">Placed</div>
+          <div>{{ order.created_at.strftime('%d %b %Y') }}</div>
+        </div>
+      </div>
+
+      <ol class="timeline" style="list-style:none; padding:0; margin:0 0 6px">
+        {% for e in order.events %}
+        <li style="display:flex; gap:12px; padding:10px 0; border-bottom:1px solid var(--border-subtle, rgba(255,255,255,0.08))">
+          <span class="urgency-dot" aria-hidden="true" style="margin-top:6px; color:var(--accent-primary, #f2bd5a); background:currentColor"></span>
+          <span>
+            <b>{{ e.status }}</b>{% if e.note %} — {{ e.note }}{% endif %}
+            {% if e.location %}<span class="muted sm"> · {{ e.location }}</span>{% endif %}
+            <span class="muted sm" style="display:block">{{ e.created_at.strftime('%d %b %Y, %H:%M') }}</span>
+          </span>
+        </li>
+        {% else %}
+        <li class="muted">No tracking events yet.</li>
+        {% endfor %}
+      </ol>
+
+      {% if order.tracking_number %}
+      <p class="muted sm" style="margin-top:12px">Carrier <b>{{ order.carrier }}</b> · tracking <span class="mono">{{ order.tracking_number }}</b></span></p>
+      {% endif %}
+
+      <div style="margin-top:16px">
+        <a class="btn-primary btn-sm" href="{{ url_for('auth.login') }}">Sign in for full details</a>
+      </div>
+    </div>
+    {% elif reference and request.method == 'POST' %}
+    <p class="muted" style="margin-top:20px">No order matched those details. Double-check the reference, or <a href="{{ url_for('account.support') }}">contact support</a>.</p>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}

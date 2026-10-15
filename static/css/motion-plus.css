@@ -1,0 +1,226 @@
+/* ============================================================
+   Motion Plus — an additive animation layer.
+   Techniques adapted from 21st.dev components and rebuilt for
+   this vanilla Flask/Jinja + CSS/JS stack:
+     • "Spotlight Background"  -> a cursor-following ambient glow
+       that shrinks while the pointer moves and swells when it rests.
+     - "Spotlight Card"        -> a hover spotlight that tracks the
+       pointer inside a card via a ::after gradient.
+     - "Scroll text reveal"    -> word-by-word masked reveal.
+     + marquee ticker, header condense, back-to-top, ripple.
+   Everything is additive and reduced-motion aware: removing this
+   stylesheet changes nothing structurally.
+   ============================================================ */
+
+:root {
+  --spot-size: 300px;
+  --spot-tint: rgba(242, 189, 90, 0.16);
+  --spot-tint-2: rgba(226, 89, 62, 0.07);
+}
+
+/* ---------- 1. Cursor spotlight (from "Spotlight Background") ---------- */
+#cursorSpot {
+  position: fixed;
+  left: 0;
+  top: 0;
+  width: var(--spot-size);
+  height: var(--spot-size);
+  margin-left: calc(var(--spot-size) / -2);
+  margin-top: calc(var(--spot-size) / -2);
+  border-radius: 50%;
+  z-index: -1;
+  pointer-events: none;
+  opacity: 0;
+  transform: translate3d(var(--csx, 50vw), var(--csy, 50vh), 0);
+  background: radial-gradient(circle, rgba(242, 189, 90, 0.15), rgba(226, 89, 62, 0.07) 46%, transparent 70%);
+  transition: width 0.38s ease-out, height 0.35s ease-out,
+    margin 0.35s ease-out, opacity 0.5s ease;
+  will-change: transform, width, height;
+}
+body.has-spot-cursor #cursorSpot { opacity: 1; }
+#cursorSpot.is-moving { --spot-size: 225px; }
+[data-theme="light"] #cursorSpot {
+  background: radial-gradient(circle, rgba(232, 163, 61, 0.18), rgba(226, 89, 62, 0.08) 46%, transparent 70%);
+}
+
+/* ---------- 2. Card spotlight (from "Spotlight Card") ---------- */
+.has-spot { position: relative; }
+.has-spot::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  z-index: 2;
+  opacity: 0;
+  background: radial-gradient(
+    320px circle at var(--mx, 50%) var(--my, 50%),
+    var(--spot-tint),
+    var(--spot-tint-2) 42%,
+    transparent 68%
+  );
+  transition: opacity 0.35s ease;
+}
+.has-spot:hover::after,
+.has-spot:focus-within::after { opacity: 1; }
+
+/* ---------- 2b. Gallery zoom ---------- */
+.gallery-main { overflow: hidden; }
+.gallery-main img { transition: transform 0.7s cubic-bezier(0.16, 1, 0.3, 1); }
+.gallery-main:hover img { transform: scale(1.045); }
+
+/* ---------- 3. Scroll reveal ---------- */
+.has-js [data-reveal] {
+  opacity: 0;
+  transform: translateY(26px);
+  transition: opacity 0.8s cubic-bezier(0.16, 1, 0.3, 1),
+    transform 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+  transition-delay: var(--d, 0ms);
+  will-change: opacity, transform;
+}
+.has-js [data-reveal="left"] { transform: translateX(-30px); }
+.has-js [data-reveal="right"] { transform: translateX(30px); }
+.has-js [data-reveal="scale"] { transform: scale(0.94); }
+.has-js [data-reveal].is-in { opacity: 1; transform: none; }
+
+.has-js .auto-reveal {
+  opacity: 0;
+  transform: translateY(26px);
+  transition: opacity 0.7s cubic-bezier(0.16, 1, 0.3, 1),
+    transform 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: opacity, transform;
+}
+.has-js .auto-reveal.is-in { opacity: 1; transform: none; }
+
+/* ---------- 3b. Word-by-word text reveal ---------- */
+.rw {
+  display: inline-block;
+  overflow: hidden;
+  vertical-align: bottom;
+  padding-bottom: 0.08em;
+  margin-bottom: -0.08em;
+}
+.rw > i {
+  display: inline-block;
+  font-style: inherit;
+  transform: translateY(110%);
+  opacity: 0;
+  transition: transform 0.75s cubic-bezier(0.16, 1, 0.3, 1),
+    opacity 0.75s ease;
+  transition-delay: var(--d, 0ms);
+}
+[data-reveal-text].is-in .rw > i { transform: none; opacity: 1; }
+.has-js [data-reveal-text] { transition: opacity 0.3s ease; }
+
+/* ---------- 4. Marquee ticker ---------- */
+.marquee {
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--bg-surface);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  box-shadow: var(--shadow-card);
+  margin-bottom: 26px;
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 7%, #000 93%, transparent);
+  mask-image: linear-gradient(90deg, transparent, #000 7%, #000 93%, transparent);
+}
+.marquee-track {
+  display: flex;
+  flex-wrap: nowrap;
+  width: max-content;
+  animation: marqueeScroll var(--marquee-duration, 42s) linear infinite;
+}
+.marquee:hover .marquee-track { animation-play-state: paused; }
+.marquee-group { display: flex; align-items: center; flex: 0 0 auto; }
+.marquee-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 15px 26px;
+  font-size: 0.86rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+.marquee-item svg {
+  width: 17px; height: 17px; flex: none;
+  stroke: var(--accent-primary); fill: none;
+  stroke-width: 2; stroke-linecap: round; stroke-linejoin: round;
+}
+.marquee-sep {
+  width: 5px; height: 5px; border-radius: 50%;
+  background: var(--accent-primary); opacity: 0.5; flex: none;
+}
+@keyframes marqueeScroll {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+
+/* ---------- 4. Header condense ---------- */
+.site-header { transition: box-shadow 0.3s ease; }
+.header-inner { transition: padding 0.32s cubic-bezier(0.16, 1, 0.3, 1); }
+.brand-mark { transition: transform 0.32s cubic-bezier(0.16, 1, 0.3, 1); }
+.site-header.scrolled { box-shadow: 0 14px 34px rgba(0, 0, 0, 0.32); }
+[data-theme="light"] .site-header.scrolled { box-shadow: 0 14px 34px rgba(60, 40, 20, 0.14); }
+.site-header.scrolled .header-inner { padding-top: 8px; padding-bottom: 8px; }
+.site-header.scrolled .brand-mark { transform: scale(0.92); }
+
+/* ---------- 5. Back to top ---------- */
+#toTop {
+  position: fixed;
+  right: 78px;
+  bottom: 24px;
+  z-index: 121;
+  width: 46px;
+  height: 46px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--border-subtle);
+  border-radius: 50%;
+  background: var(--bg-surface);
+  color: var(--text-secondary);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.4);
+  cursor: pointer;
+  opacity: 0;
+  transform: translateY(14px) scale(0.9);
+  pointer-events: none;
+  transition: opacity 0.35s ease, transform 0.35s cubic-bezier(0.16, 1, 0.3, 1),
+    color 0.2s ease, border-color 0.2s ease;
+}
+#toTop.show { opacity: 1; transform: none; pointer-events: auto; }
+#toTop:hover { color: var(--accent-primary); border-color: var(--border-hover); transform: translateY(-2px); }
+#toTop svg { width: 20px; height: 20px; stroke: currentColor; fill: none; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+@media (max-width: 640px) {
+  #toTop { right: 18px; bottom: 78px; }
+}
+
+/* ---------- 6. Ripple ---------- */
+.ripple-host { position: relative; overflow: hidden; }
+.ripple-wave {
+  position: absolute;
+  border-radius: 50%;
+  transform: scale(0);
+  opacity: 0.5;
+  background: rgba(255, 255, 255, 0.55);
+  pointer-events: none;
+  animation: rippleOut 0.62s ease-out forwards;
+}
+[data-theme="light"] .ripple-wave { background: rgba(20, 12, 4, 0.16); }
+@keyframes rippleOut {
+  to { transform: scale(2.6); opacity: 0; }
+}
+
+/* ---------- Reduced motion ---------- */
+@media (prefers-reduced-motion: reduce) {
+  #cursorSpot { display: none; }
+  .marquee-track { animation: none; }
+  .has-js [data-reveal],
+  .has-js .auto-reveal { opacity: 1 !important; transform: none !important; }
+  .rw > i { transform: none !important; opacity: 1 !important; }
+  .gallery-main:hover img { transform: none; }
+}

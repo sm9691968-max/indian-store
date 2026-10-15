@@ -20,6 +20,13 @@
     <p class="help-text">Anyone with the link can view this list. They cannot change it.</p>
   </div>
   {% endif %}
+
+  {% if products %}
+  <form method="post" action="{{ url_for('catalog.wishlist_move_all') }}">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <button class="btn-primary" type="submit">Move all to cart</button>
+  </form>
+  {% endif %}
 </div>
 
 {% if not products %}

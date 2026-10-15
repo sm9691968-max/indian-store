@@ -6,7 +6,7 @@
 <section class="hero deals-hero fade-up">
   <span class="deal-kicker" style="color: var(--accent-rose)">Flash offers</span>
   <h1>Deals worth<br><em>waiting for</em>.</h1>
-  <p>Hand-picked markdowns on keyboards, audio, displays and desk gear — marked down for a limited run while stock lasts.</p>
+  <p data-reveal-text>Hand-picked markdowns on keyboards, audio, displays and desk gear — marked down for a limited run while stock lasts.</p>
   <div class="hero-stats">
     <div class="hero-stat"><div class="v" data-count="{{ total }}">{{ total }}</div><div class="k">On sale now</div></div>
     {% if max_pct %}<div class="hero-stat"><div class="v" data-count="{{ max_pct }}" data-prefix="Up to " data-suffix="%">Up to {{ max_pct }}%</div><div class="k">Top markdown</div></div>{% endif %}
@@ -15,7 +15,7 @@
   </div>
 </section>
 
-<div class="toolbar">
+<div class="toolbar" data-reveal>
   <div>
     <h2 class="section-title">Live deals <span class="count-pill">{{ total }}</span></h2>
   </div>
@@ -37,7 +37,7 @@
 </div>
 
 {% if pages > 1 %}
-<nav class="pagination" aria-label="Pagination">
+<nav class="pagination" aria-label="Pagination" data-reveal>
   {% if page > 1 %}
   <a href="{{ url_for('catalog.deals', page=page-1, sort=sort) }}">&larr; Prev</a>
   {% else %}

@@ -4,25 +4,38 @@ from decimal import Decimal
 
 from flask import (
     Blueprint,
-    render_template,
-    request,
-    session,
-    redirect,
-    url_for,
     abort,
     flash,
     jsonify,
+    redirect,
+    render_template,
+    request,
+    session,
+    url_for,
 )
-from sqlalchemy import or_, func
+from sqlalchemy import func, or_
 
 from extensions import db
+from helpers import (
+    current_user,
+    like_pattern,
+    log_email,
+    login_required,
+    money_str,
+    recommend_products,
+    safe_next,
+    search_products,
+    visitor_id,
+    wants_json,
+    wishlist_ids,
+)
 from models import (
     CartItem,
     Category,
+    Coupon,
     Order,
     OrderItem,
     Product,
-    ProductImage,
     ProductQuestion,
     Review,
     StockAlert,
@@ -30,18 +43,6 @@ from models import (
     ViewEvent,
     WishlistItem,
     utcnow,
-)
-from helpers import (
-    current_user,
-    login_required,
-    log_email,
-    search_products,
-    safe_next,
-    visitor_id,
-    wishlist_ids,
-    wants_json,
-    recommend_products,
-    money_str,
 )
 
 catalog_bp = Blueprint("catalog", __name__)
@@ -52,10 +53,10 @@ DEALS_STRIP = 8
 RECENT_LIMIT = 12
 ALERT_KINDS = ("restock", "price")
 PRICE_BANDS = [
-    ("under-50", "Under $50", None, Decimal("50")),
-    ("50-150", "$50 - $150", Decimal("50"), Decimal("150")),
-    ("150-400", "$150 - $400", Decimal("150"), Decimal("400")),
-    ("over-400", "Over $400", Decimal("400"), None),
+    ("under-50", "Under", None, Decimal("50")),
+    ("50-150", "50 – 150", Decimal("50"), Decimal("150")),
+    ("150-400", "150 - 400", Decimal("150"), Decimal("400")),
+    ("over-400", "Over", Decimal("400"), None),
 ]
 
 
@@ -82,9 +83,13 @@ def _build_query(extra: dict | None = None):
     stmt = db.select(Product).where(Product.is_active.is_(True))
 
     if search:
-        like = f"%{search}%"
+        like = like_pattern(search)
         stmt = stmt.where(
-            or_(Product.name.ilike(like), Product.description.ilike(like), Product.sku.ilike(like))
+            or_(
+                Product.name.ilike(like, escape="\\"),
+                Product.description.ilike(like, escape="\\"),
+                Product.sku.ilike(like, escape="\\"),
+            )
         )
 
     if slug:
@@ -160,15 +165,6 @@ def _local_bands() -> list[tuple]:
         )
         for key, _label, low, high in PRICE_BANDS
     ]
-
-
-def _price_band_for(max_usd) -> str | None:
-    for key, _label, low, high in PRICE_BANDS:
-        if high is None:
-            return key if max_usd >= low else None
-        if max_usd >= low:
-            return key
-    return None
 
 
 @catalog_bp.get("/deals")
@@ -386,6 +382,7 @@ def product_detail(slug):
         compare_count=len(compare_ids),
         emi_plans=_emi_plans(product.price),
         viewing_now=_viewing_now(product),
+        helpful_ids=set(session.get("helpful", [])),
     )
 
 
@@ -653,6 +650,17 @@ def compare():
         ).all()
         # Preserve the order the shopper added them in.
         products = sorted(rows, key=lambda p: ids.index(p.id))
+    else:
+        # A shared comparison link carries product slugs instead of session ids.
+        slugs = [s.strip() for s in (request.args.get("items") or "").split(",") if s.strip()]
+        slugs = slugs[:COMPARE_LIMIT]
+        if slugs:
+            rows = db.session.scalars(
+                db.select(Product).where(
+                    Product.slug.in_(slugs), Product.is_active.is_(True)
+                )
+            ).all()
+            products = sorted(rows, key=lambda p: slugs.index(p.slug))
     return render_template("catalog/compare.html", products=products, limit=COMPARE_LIMIT)
 
 
@@ -808,3 +816,157 @@ def delete_alert(alert_id):
     db.session.commit()
     flash("Alert removed.", "info")
     return redirect(url_for("account.alerts"))
+
+
+@catalog_bp.get("/product/<slug>/quick")
+def quick_view(slug):
+    """Compact JSON for the quick-view modal on product cards."""
+    from flask_wtf.csrf import generate_csrf
+
+    product = db.session.scalar(db.select(Product).filter_by(slug=slug))
+    if product is None or not product.is_active:
+        abort(404)
+    return jsonify(
+        {
+            "id": product.id,
+            "name": product.name,
+            "url": url_for("catalog.product_detail", slug=product.slug),
+            "add_url": url_for("cart.add", product_id=product.id),
+            "image": product.image,
+            "price": money_str(product.price),
+            "blurb": product.description,
+            "rating": product.rating,
+            "review_count": product.review_count,
+            "stock": product.stock,
+            "brand": product.brand or "",
+            "category": product.category.name if product.category else "",
+            "csrf": generate_csrf(),
+        }
+    )
+
+
+@catalog_bp.post("/review/<int:review_id>/helpful")
+@login_required
+def review_helpful(review_id):
+    """Toggle a 'was this helpful?' vote. Votes are tracked per session."""
+    review = db.session.get(Review, review_id)
+    if review is None:
+        abort(404)
+    voted = set(session.get("helpful", []))
+    if review_id in voted:
+        voted.discard(review_id)
+        review.helpful_count = max(0, review.helpful_count - 1)
+        marked = False
+    else:
+        voted.add(review_id)
+        review.helpful_count += 1
+        marked = True
+    session["helpful"] = sorted(voted)
+    db.session.commit()
+
+    if wants_json():
+        return jsonify({"marked": marked, "count": review.helpful_count})
+    return redirect(url_for("catalog.product_detail", slug=review.product.slug) + "#reviews")
+
+
+@catalog_bp.post("/wishlist/move-all")
+@login_required
+def wishlist_move_all():
+    """Move every in-stock wishlist item into the cart in one action."""
+    user = current_user()
+    rows = db.session.scalars(
+        db.select(WishlistItem).where(WishlistItem.user_id == user.id)
+    ).all()
+    moved = 0
+    for row in rows:
+        product = db.session.get(Product, row.product_id)
+        if product is None or not product.is_active or product.stock < 1:
+            continue
+        existing = db.session.scalar(
+            db.select(CartItem).where(
+                CartItem.user_id == user.id,
+                CartItem.product_id == product.id,
+                CartItem.variant_id.is_(None),
+            )
+        )
+        if existing:
+            existing.quantity = min(existing.quantity + 1, min(product.stock, 20))
+            existing.is_saved = False
+        else:
+            db.session.add(
+                CartItem(user_id=user.id, product_id=product.id, quantity=1)
+            )
+        db.session.delete(row)
+        moved += 1
+    db.session.commit()
+    if moved:
+        flash(f"Moved {moved} item{'s' if moved != 1 else ''} to your cart.", "success")
+    else:
+        flash("Nothing to move — those items are out of stock.", "info")
+    return redirect(url_for("catalog.wishlist"))
+
+
+@catalog_bp.get("/offers")
+def offers():
+    """Public list of redeemable coupons, so shoppers can self-serve codes."""
+    rows = db.session.scalars(db.select(Coupon).order_by(Coupon.code)).all()
+    coupons = [c for c in rows if c.is_redeemable]
+    return render_template("catalog/offers.html", coupons=coupons)
+
+
+FAQ_ITEMS = [
+    (
+        "How long does delivery take?",
+        "Metro pincodes are usually delivered the next day. Most other addresses "
+        "arrive within 2–5 working days. Orders over the free-delivery threshold "
+        "ship at no extra cost.",
+    ),
+    (
+        "How much does shipping cost?",
+        "Shipping is calculated at checkout and shown as a separate line before you "
+        "pay. Any active free-shipping coupon will zero it out automatically.",
+    ),
+    (
+        "What is your returns policy?",
+        "You have 30 days from delivery to return an unused item in its original "
+        "packaging. Start the return from the order page and we'll issue a prepaid "
+        "label where available.",
+    ),
+    (
+        "Which payment methods do you accept?",
+        "Card, UPI, net banking and cash on delivery. EMI is available on eligible "
+        "cards and shown on the product page for orders over the EMI threshold.",
+    ),
+    (
+        "How do refunds work?",
+        "Once we receive the returned item, refunds are processed within 3–5 working "
+        "days to the original payment method. Gift-card balances are restored "
+        "immediately.",
+    ),
+    (
+        "Do products carry a warranty?",
+        "Yes. Warranty terms are listed on each product page under the spec sheet. "
+        "Keep your invoice — it is your proof of purchase for any warranty claim.",
+    ),
+    (
+        "Can I cancel an order?",
+        "Orders can be cancelled from the order page until they are marked Shipped. "
+        "After shipping, please start a return instead.",
+    ),
+    (
+        "How do I track my order?",
+        "Use the Track order page with your order reference and email, or sign in "
+        "and open the order for a live timeline.",
+    ),
+]
+
+
+@catalog_bp.get("/faq")
+def faq():
+    return render_template("catalog/faq.html", faqs=FAQ_ITEMS)
+
+
+@catalog_bp.get("/policies")
+def policies():
+    """Shipping, returns, warranty, privacy and terms in one indexable page."""
+    return render_template("catalog/policies.html")

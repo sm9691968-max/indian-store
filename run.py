@@ -1,8 +1,14 @@
-from app import create_app
+import os
 
-app = create_app()
+from app import create_app
+from config import get_config
+
+app = create_app(get_config())
+
 
 if __name__ == "__main__":
-    # Debug mode exposes the Werkzeug console, which allows arbitrary code
-    # execution, so it is opt-in via FLASK_DEBUG=1 and never the default.
-    app.run(debug=app.config["DEBUG"], port=5000)
+    app.run(
+        host=os.environ.get("HOST", "127.0.0.1"),
+        port=int(os.environ.get("PORT", "5000")),
+        debug=app.config["DEBUG"],
+    )

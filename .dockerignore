@@ -1,0 +1,15 @@
+.venv/
+venv/
+.git/
+.github/
+.pytest_cache/
+.ruff_cache/
+__pycache__/
+*.py[cod]
+*.log
+*.err
+instance/
+.env
+.reticle/
+.reticle.json
+.21st/

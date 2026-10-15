@@ -80,11 +80,11 @@
           </div>
           <div class="field">
             <label for="postal">Postal code</label>
-            <input type="text" id="postal" name="postal" required autocomplete="postal-code">
+            <input type="text" id="postal" name="postal" required autocomplete="postal-code" data-pincode>
           </div>
           <div class="field">
             <label for="country">Country</label>
-            <input type="text" id="country" name="country" value="United States" autocomplete="country-name">
+            <input type="text" id="country" name="country" value="{{ (form.country if form is defined and form.country else 'India') }}" autocomplete="country-name">
           </div>
           <div class="field">
             <label for="phone">Phone (optional)</label>

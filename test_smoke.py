@@ -44,7 +44,7 @@ def main():
     with app.app_context():
         seed.main()
 
-    from models import Coupon, Product, User, db as _db  # noqa: F401
+    from models import Coupon, Product, User  # noqa: F401
 
     client = app.test_client()
 
@@ -414,7 +414,8 @@ def main():
     check("cannot cancel twice", b"no longer be cancelled" in r.data)
 
     with app.app_context():
-        from models import Order, Product as _P
+        from models import Order
+        from models import Product as _P
 
         order = db.session.scalar(db.select(Order).filter_by(reference=reference))
         stock_after_cancel = db.session.scalar(

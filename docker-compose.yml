@@ -1,0 +1,17 @@
+services:
+  web:
+    build: .
+    image: indian-store:latest
+    ports:
+      - "5000:5000"
+    environment:
+      APP_ENV: production
+      SECRET_KEY: ${SECRET_KEY:-change-me-before-any-real-deployment}
+      DATABASE_URL: sqlite:////data/shop.db
+      LOG_LEVEL: INFO
+    volumes:
+      - shop-data:/data
+    restart: unless-stopped
+
+volumes:
+  shop-data:

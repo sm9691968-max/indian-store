@@ -1,9 +1,10 @@
 """Shared helpers: auth guards, pricing maths, currency, loyalty, rate limiting."""
 
+import hashlib
 import re
 import secrets
 import time
-from decimal import Decimal, ROUND_HALF_UP
+from decimal import ROUND_HALF_UP, Decimal
 from functools import wraps
 from urllib.parse import urlparse
 
@@ -54,14 +55,26 @@ _locked: dict[str, float] = {}
 # ----------------------------------------------------------------- auth
 
 
+def auth_fingerprint(user: User) -> str:
+    """A short digest of the current password hash, stored in the session.
+
+    When the password changes the hash changes, so every session carrying the
+    old fingerprint stops authenticating — that is what lets a password change
+    sign other devices out without a server-side session store.
+    """
+    return hashlib.sha1((user.password_hash or "").encode("utf-8")).hexdigest()[:16]
+
+
 def current_user() -> User | None:
-    """Return the logged-in user, clearing a stale session if the row vanished."""
+    """Return the logged-in user, clearing a stale session if the row vanished
+    or the account's password was changed elsewhere."""
     user_id = session.get("user_id")
     if not user_id:
         return None
     user = db.session.get(User, user_id)
-    if user is None:
+    if user is None or session.get("auth_fp") != auth_fingerprint(user):
         session.clear()
+        return None
     return user
 
 
@@ -289,6 +302,71 @@ def live_activity_events(limit: int = 8) -> list[dict]:
     return events
 
 
+# ----------------------------------------------------------------- discovery
+
+
+def trending_searches(limit: int = 6) -> list[str]:
+    """Search terms for an empty search box: the categories and brands people
+    actually buy, pulled from real order history so the list stays honest."""
+
+    from models import Category
+
+    rows = db.session.execute(
+        db.select(Category.name, db.func.count(OrderItem.id).label("n"))
+        .select_from(OrderItem)
+        .join(Product, Product.id == OrderItem.product_id)
+        .join(Category, Category.id == Product.category_id)
+        .group_by(Category.name)
+        .order_by(db.func.count(OrderItem.id).desc())
+        .limit(limit)
+    ).all()
+    terms = [row[0] for row in rows if row[0]]
+    if len(terms) < limit:
+        brands = db.session.scalars(
+            db.select(Product.brand)
+            .where(Product.brand.isnot(None), Product.brand != "")
+            .group_by(Product.brand)
+            .order_by(db.func.sum(Product.sold_count).desc())
+            .limit(limit * 2)
+        ).all()
+        for brand in brands:
+            if brand and brand not in terms:
+                terms.append(brand)
+            if len(terms) >= limit:
+                break
+    return terms[:limit]
+
+
+def sold_last_24h(product_id: int) -> int:
+    """Units of a product sold in the last day, for a scarcity nudge."""
+    from datetime import timedelta
+
+    since = utcnow() - timedelta(hours=24)
+    total = db.session.scalar(
+        db.select(db.func.coalesce(db.func.sum(OrderItem.quantity), 0))
+        .select_from(OrderItem)
+        .join(Order, Order.id == OrderItem.order_id)
+        .where(OrderItem.product_id == product_id, Order.created_at >= since)
+    )
+    return int(total or 0)
+
+
+def find_order(reference: str, email: str = "", postal: str = ""):
+    """Look up an order for guest tracking: reference plus a matching detail."""
+    reference = (reference or "").strip().upper()
+    if not reference:
+        return None
+    order = db.session.scalar(db.select(Order).filter_by(reference=reference))
+    if order is None:
+        return None
+    if email or postal:
+        email_ok = email and order.user and normalise_email(order.user.email) == normalise_email(email)
+        postal_ok = postal and (order.shipping_postal or "").strip() == postal.strip()
+        if not (email_ok or postal_ok):
+            return None
+    return order
+
+
 # ----------------------------------------------------------------- wishlist
 
 
@@ -367,7 +445,15 @@ def quote_cart(items, user=None) -> dict:
     all_free = bool(items) and all(i.product.free_shipping for i in items)
     shipping = shipping_for(subtotal, free_overrides=[all_free])
     coupon = active_coupon()
-    discount = coupon.discount_for(subtotal, shipping) if coupon else Decimal("0.00")
+    # A free-shipping coupon waives the delivery charge only; it must never also
+    # subtract that amount from the merchandise subtotal (that would hand the
+    # shopper free delivery *and* a merchandise discount equal to the shipping).
+    if coupon is None:
+        discount = Decimal("0.00")
+    elif coupon.kind == "freeship":
+        discount = Decimal("0.00")
+    else:
+        discount = coupon.discount_for(subtotal, shipping)
     if coupon and coupon.min_subtotal and subtotal < coupon.min_subtotal:
         coupon = None
         discount = Decimal("0.00")
@@ -380,7 +466,10 @@ def quote_cart(items, user=None) -> dict:
     max_redeemable = max(subtotal - discount, Decimal("0.00"))
     requested = session.get("points_redeem", 0)
     available = points_available(user)
-    redeem_points = max(0, min(int(requested or 0), available))
+    # Never spend more points than the order can absorb, otherwise the shopper
+    # is debited for points that bought no discount.
+    max_points = int(max_redeemable / POINT_VALUE)
+    redeem_points = max(0, min(int(requested or 0), available, max_points))
     points_value = points_to_discount(redeem_points, max_redeemable)
     if points_value <= 0:
         redeem_points = 0
@@ -397,16 +486,17 @@ def quote_cart(items, user=None) -> dict:
             session.pop("gift_card_code", None)
             gift_card = None
         if gift_card is not None:
-            # A gift card can settle the merchandise, the delivery and the tax,
-            # but never pushes the order below zero.
-            remaining = max_redeemable - points_value + shipping_after
-            gift_value = min(Decimal(gift_card.balance), max(remaining, Decimal("0.00")))
+            # A gift card settles the merchandise (and the tax on it) but never
+            # pushes the order below zero. It is capped at what is still owed on
+            # the goods — never the delivery — so the shipping line stays honest
+            # and the summary always reconciles.
+            remaining = max(max_redeemable - points_value, Decimal("0.00"))
+            gift_value = min(Decimal(gift_card.balance), remaining)
             if gift_value <= 0:
                 session.pop("gift_card_code", None)
                 gift_card = None
                 gift_value = Decimal("0.00")
 
-    total_discount = discount + points_value + gift_value
     taxable = max(subtotal - discount - points_value - gift_value, Decimal("0.00"))
     tax = (taxable * TAX_RATE).quantize(Decimal("0.01"))
     total = taxable + shipping_after + tax
@@ -585,21 +675,28 @@ def safe_next(target: str | None) -> str | None:
     return candidate.path + (f"?{candidate.query}" if candidate.query else "")
 
 
+def like_pattern(term: str) -> str:
+    """Build a LIKE pattern from user input, escaping % and _ so a literal
+    wildcard in the search box can never widen the match."""
+    escaped = (term or "").replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+    return f"%{escaped}%"
+
+
 def search_products(term: str, limit: int = 8) -> list:
     """Shared live-search query used by the header dropdown and the search page."""
     from models import Product
 
-    like = f"%{term}%"
+    like = like_pattern(term)
     return list(
         db.session.scalars(
             db.select(Product)
             .where(
                 Product.is_active.is_(True),
                 or_(
-                    Product.name.ilike(like),
-                    Product.brand.ilike(like),
-                    Product.sku.ilike(like),
-                    Product.description.ilike(like),
+                    Product.name.ilike(like, escape="\\"),
+                    Product.brand.ilike(like, escape="\\"),
+                    Product.sku.ilike(like, escape="\\"),
+                    Product.description.ilike(like, escape="\\"),
                 ),
             )
             .order_by(Product.sold_count.desc(), Product.rating.desc())

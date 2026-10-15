@@ -1,23 +1,22 @@
 import time
-from urllib.parse import urljoin, urlparse
 
 from flask import (
     Blueprint,
-    render_template,
-    request,
-    redirect,
-    url_for,
-    session,
     flash,
     jsonify,
-    abort,
+    redirect,
+    render_template,
+    request,
+    session,
+    url_for,
 )
 from sqlalchemy import func
 
+import totp
 from extensions import db
-from models import EmailLog, User
 from helpers import (
     audit,
+    auth_fingerprint,
     clear_login_failures,
     clear_totp_failures,
     current_user,
@@ -27,12 +26,11 @@ from helpers import (
     record_totp_failure,
     safe_next,
     shopper_session,
-    touch_login,
     totp_locked_for,
+    touch_login,
     valid_email,
-    wants_json,
 )
-import totp
+from models import EmailLog, User
 
 auth_bp = Blueprint("auth", __name__, url_prefix="/auth")
 
@@ -192,6 +190,7 @@ def _establish_session(user: User, remember: bool) -> None:
     session.clear()
     session.update(kept)
     session["user_id"] = user.id
+    session["auth_fp"] = auth_fingerprint(user)
     session.permanent = remember
     user.remember = remember
     user.failed_logins = 0
@@ -269,8 +268,11 @@ def register():
         )
         db.session.commit()
 
+        kept = shopper_session()
         session.clear()
+        session.update(kept)
         session["user_id"] = user.id
+        session["auth_fp"] = auth_fingerprint(user)
         flash("Account created. Welcome to Indian Store.", "success")
         audit(user, "register", "User", user.id, user.email)
         db.session.commit()

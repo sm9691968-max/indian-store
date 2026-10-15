@@ -31,15 +31,23 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='css/site.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/extended.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/animations.css') }}">
-  <script defer src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
-  <script defer src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/ScrollTrigger.min.js"></script>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/motion-plus.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/features.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/blackhole-hero.css') }}">
+  <script src="{{ url_for('static', filename='js/blackhole-hero.js') }}" defer></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/gsap.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/ScrollTrigger.min.js"></script>
+  <script defer src="{{ url_for('static', filename='js/motion.js') }}"></script>
+  <script defer src="{{ url_for('static', filename='js/features.js') }}"></script>
   <script>
     if (localStorage.getItem('indian-store-theme') === 'light') {
       document.documentElement.setAttribute('data-theme', 'light');
     }
+    document.documentElement.classList.add('has-js');
   </script>
 </head>
 <body>
+  <a class="skip-link" href="#main">Skip to content</a>
   <div id="scrollProgress"></div>
   <div class="site-orb a"></div>
   <div class="site-orb b"></div>
@@ -53,7 +61,7 @@
           <svg viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"></path></svg>
         </div>
         <span class="brand-name">Indian Store</span>
-        <span class="brand-tag">Store</span>
+        <span class="brand-tag">Marketplace</span>
       </a>
 
       <form class="search-form" action="{{ url_for('catalog.index') }}" method="get"
@@ -65,6 +73,19 @@
         <button type="submit" aria-label="Search">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
         </button>
+        <div class="search-extras" id="searchExtras" hidden>
+          <div class="se-group" id="seRecent" hidden>
+            <span class="se-title">Recent searches</span>
+            <div class="se-chips" id="seRecentChips"></div>
+            <button type="button" class="se-clear" id="seClear">Clear</button>
+          </div>
+          <div class="se-group">
+            <span class="se-title">Trending</span>
+            <div class="se-chips">
+              {% for term in trending_searches %}<a class="se-chip" href="{{ url_for('catalog.index', q=term) }}">{{ term }}</a>{% endfor %}
+            </div>
+          </div>
+        </div>
       </form>
 
       <div class="header-actions">
@@ -135,23 +156,115 @@
   <div class="toast-stack" id="toastStack"></div>
   <div id="flashPayload" hidden>{{ get_flashed_messages(with_categories=true) | tojson }}</div>
 
-  <main class="shell page">
+  <main class="shell page" id="main">
     {% block content %}{% endblock %}
   </main>
 
   <footer class="footer">
-    <div class="footer-inner">
-      <div>&copy; {{ now_year }} Indian Store &middot; Demo build</div>
-      <div class="footer-links">
-        <a href="{{ url_for('catalog.index') }}">Shop</a>
-        <a href="{{ url_for('catalog.deals') }}">Deals</a>
-        {% if current_user %}<a href="{{ url_for('catalog.wishlist') }}">Wishlist</a>{% endif %}
-        {% if current_user %}<a href="{{ url_for('cart.orders') }}">Orders</a>{% endif %}
-        {% if current_user and current_user.is_admin %}<a href="{{ url_for('admin.dashboard') }}">Admin</a>{% endif %}
-        <a href="{{ url_for('auth.login') }}">Auth</a>
+    <div class="site-foot">
+      <div class="foot-wrap">
+        <div class="trust-strip">
+          <div class="trust-item">
+            <svg viewBox="0 0 24 24"><path d="M3 7h11l5 5v5h-2M3 7v10h2m4 0a2 2 0 1 0 4 0 2 2 0 0 0-4 0Zm9 0a2 2 0 1 0 4 0 2 2 0 0 0-4 0Z"/></svg>
+            <div><b>Free delivery</b><span>On orders over {{ free_delivery_label }}</span></div>
+          </div>
+          <div class="trust-item">
+            <svg viewBox="0 0 24 24"><path d="M12 3l7 3v6c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6l7-3Z"/><path d="M9 12l2 2 4-4"/></svg>
+            <div><b>Secure payments</b><span>256-bit encrypted checkout</span></div>
+          </div>
+          <div class="trust-item">
+            <svg viewBox="0 0 24 24"><path d="M20 11A8 8 0 0 0 6.3 6.3L3 9"/><path d="M3 4v5h5"/><path d="M4 13a8 8 0 0 0 13.7 4.7L21 15"/><path d="M21 20v-5h-5"/></svg>
+            <div><b>7-day easy returns</b><span>No-questions refunds</span></div>
+          </div>
+          <div class="trust-item">
+            <svg viewBox="0 0 24 24"><path d="M8 3h8a2 2 0 0 1 2 2v14l-6-3-6 3V5a2 2 0 0 1 2-2Z"/></svg>
+            <div><b>GST invoice</b><span>On every single order</span></div>
+          </div>
+        </div>
+
+        <div class="foot-grid">
+          <div class="foot-brand">
+            <a class="brand" href="{{ url_for('catalog.index') }}">
+              <span class="brand-mark"><svg viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"></path></svg></span>
+              <span class="brand-name">Indian Store</span>
+            </a>
+            <p>A curated marketplace for premium keyboards, audio, displays and desk gear — designed in India and shipped across the country.</p>
+            <div class="foot-legal-id">
+              Indian Store Retail Pvt. Ltd.<br>
+              4th Floor, Prestige Tech Park, Bengaluru 560103<br>
+              GSTIN <span class="mono">29ABCDE1234F1Z5</span>
+            </div>
+          </div>
+          <div class="foot-col">
+            <h4>Shop</h4>
+            <a href="{{ url_for('catalog.index') }}">All products</a>
+            <a href="{{ url_for('catalog.deals') }}">Deals</a>
+            <a href="{{ url_for('catalog.offers') }}">Offers &amp; coupons</a>
+            <a href="{{ url_for('catalog.index', sort='newest') }}">New arrivals</a>
+            <a href="{{ url_for('catalog.compare') }}">Compare</a>
+          </div>
+          <div class="foot-col">
+            <h4>Help</h4>
+            <a href="{{ url_for('cart.track') }}">Track your order</a>
+            <a href="{{ url_for('catalog.faq') }}">Help &amp; FAQ</a>
+            <a href="{{ url_for('catalog.policies', _anchor='shipping') }}">Shipping &amp; delivery</a>
+            <a href="{{ url_for('catalog.policies', _anchor='returns') }}">Returns &amp; refunds</a>
+            <a href="{{ url_for('catalog.policies', _anchor='warranty') }}">Warranty</a>
+          </div>
+          <div class="foot-col">
+            <h4>Company</h4>
+            <a href="{{ url_for('catalog.policies', _anchor='about') }}">About us</a>
+            <a href="{{ url_for('catalog.policies', _anchor='contact') }}">Contact</a>
+            <a href="{{ url_for('catalog.policies', _anchor='privacy') }}">Privacy policy</a>
+            <a href="{{ url_for('catalog.policies', _anchor='terms') }}">Terms of sale</a>
+          </div>
+        </div>
+
+        <div class="pay-row">
+          <span class="pay-label">We accept</span>
+          <span class="pay-badge">UPI</span>
+          <span class="pay-badge">Visa</span>
+          <span class="pay-badge">Mastercard</span>
+          <span class="pay-badge">RuPay</span>
+          <span class="pay-badge">Net Banking</span>
+          <span class="pay-badge">Cash on Delivery</span>
+          <span class="pay-badge">EMI</span>
+        </div>
+
+        <div class="foot-bottom">
+          <div>&copy; {{ now_year }} Indian Store Retail Pvt. Ltd. &middot; All rights reserved.</div>
+          <div class="footer-links">
+            <a href="{{ url_for('catalog.policies', _anchor='privacy') }}">Privacy</a>
+            <a href="{{ url_for('catalog.policies', _anchor='terms') }}">Terms</a>
+            <a href="{{ url_for('catalog.faq') }}">Support</a>
+            {% if current_user %}<a href="{{ url_for('catalog.wishlist') }}">Wishlist</a>{% endif %}
+            {% if current_user %}<a href="{{ url_for('cart.orders') }}">Orders</a>{% endif %}
+            {% if current_user and current_user.is_admin %}<a href="{{ url_for('admin.dashboard') }}">Admin</a>{% endif %}
+          </div>
+        </div>
       </div>
     </div>
   </footer>
+
+  <button id="toTop" type="button" aria-label="Back to top" title="Back to top">
+    <svg viewBox="0 0 24 24"><line x1="12" y1="19" x2="12" y2="5"></line><polyline points="5 12 12 5 19 12"></polyline></svg>
+  </button>
+
+  <div class="cookie-bar" id="cookieBar" role="dialog" aria-label="Cookie notice" hidden>
+    <p>We use cookies to keep your cart, theme and preferences working. Analytics cookies stay off until you accept.</p>
+    <div class="cookie-actions">
+      <button type="button" class="btn-ghost" data-cookie="essential">Essential only</button>
+      <button type="button" class="btn-primary" data-cookie="all">Accept all</button>
+    </div>
+  </div>
+
+  <div class="quickview" id="quickView" hidden aria-hidden="true">
+    <div class="qv-backdrop" data-qv-close></div>
+    <div class="qv-panel" role="dialog" aria-modal="true" aria-label="Quick view">
+      <button type="button" class="qv-close" data-qv-close aria-label="Close quick view">&times;</button>
+      <div class="qv-body" id="qvBody"></div>
+    </div>
+  </div>
 
   <script>
     const toastStack = document.getElementById('toastStack');
@@ -503,9 +616,9 @@ sync();
     })();
 
     // AI Shopping Assistant — a lightweight chat widget on every page.
-    // Talks to /assistant/chat, which answers locally via Ollama when it is
-    // running and falls back to a deterministic catalogue match otherwise,
-    // so the widget always has something useful to say.
+    // Talks to /assistant/chat, answered by the store's own in-house engine
+    // (pure Python, no external service) over the live catalogue, so the widget
+    // always has something useful to say.
     (function uiAssistant() {
       const css = document.createElement('style');
       css.textContent =
@@ -569,6 +682,9 @@ sync();
       const input = document.getElementById('assistInput');
       const send = document.getElementById('assistSend');
       const close = document.getElementById('assistClose');
+      // When the shopper is on a product page, tell the engine which product so
+      // questions like "is this good?" answer about what they are looking at.
+      const pageSlug = (location.pathname.match(/^\/product\/([^/?#]+)/) || [])[1] || null;
       const greet = () => 'Hi! I know our whole catalogue and current prices. Try "noise-cancelling headphones under 15,000", "wireless mouse with 4-star reviews", or just ask about a product.';
 
       let opened = false;
@@ -605,21 +721,22 @@ sync();
         fetch('/assistant/chat', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ messages: [{ role: 'user', content: message }] }),
+          body: JSON.stringify({ messages: [{ role: 'user', content: message }], product_slug: pageSlug }),
         }).then((res) => res.json().catch(() => ({ reply: '' }))).then((data) => {
           const replyEl = document.createElement('div');
           replyEl.className = 'am bot';
           replyEl.textContent = (data.reply || (data.error || 'That one stumped me — try a catalogue term or a price like "under 20,000".'));
           msgs.replaceChild(replyEl, think);
-          if (data.slug) {
-            const link = document.createElement('a');
-            const linkWrap = document.createElement('div');
-            linkWrap.className = 'am bot';
-            link.href = '/product/' + encodeURIComponent(data.slug);
-            link.textContent = 'View product →';
-            link.style.color = 'var(--accent-rose)'; link.style.fontWeight = '700';
-            linkWrap.appendChild(link); msgs.appendChild(linkWrap);
-          }
+          const addLink = (href, text) => {
+            const wrap = document.createElement('div');
+            wrap.className = 'am bot';
+            const a = document.createElement('a');
+            a.href = href; a.textContent = text;
+            a.style.color = 'var(--accent-rose)'; a.style.fontWeight = '700';
+            wrap.appendChild(a); msgs.appendChild(wrap);
+          };
+          if (data.href) addLink(data.href, data.link_text || 'Learn more →');
+          if (data.slug) addLink('/product/' + encodeURIComponent(data.slug), 'View product →');
           msgs.scrollTop = msgs.scrollHeight;
         }).catch(() => {
           const fail = document.createElement('div');
@@ -665,5 +782,14 @@ sync();
       });
     })();
   </script>
+
+  <script>
+    // Failsafe: if the motion controller never boots (blocked or failed to load),
+    // unhide anything the reveal layer is holding, so content is never stuck.
+    setTimeout(function () {
+      if (!window.__motionReady) document.documentElement.classList.remove('has-js');
+    }, 2500);
+  </script>
+
 </body>
 </html>

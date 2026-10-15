@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% block title %}Help & FAQ — Indian Store{% endblock %}
+{% block meta %}
+  <meta name="description" content="Answers to common questions about delivery, returns, payment, warranties and tracking at Indian Store.">
+  <meta name="robots" content="index, follow">
+  <link rel="canonical" href="{{ url_for('catalog.faq', _external=True) }}">
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    "mainEntity": [
+      {% for q, a in faqs %}
+      {
+        "@type": "Question",
+        "name": {{ q | tojson }},
+        "acceptedAnswer": { "@type": "Answer", "text": {{ a | tojson }} }
+      }{{ "," if not loop.last }}
+      {% endfor %}
+    ]
+  }
+  </script>
+{% endblock %}
+
+{% block content %}
+<section class="page-head">
+  <div class="wrap">
+    <nav class="crumbs"><a href="{{ url_for('catalog.index') }}">Home</a> / FAQ</nav>
+    <div class="feature-hero">
+      <h1>Frequently asked questions</h1>
+      <p>Everything about shipping, returns, payments and tracking. Can't find it? Our team replies within a day.</p>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap" style="max-width:820px">
+    <div class="faq-list">
+      {% for q, a in faqs %}
+      <div class="faq-item">
+        <button class="faq-q" type="button">
+          <span>{{ q }}</span>
+          <span class="chev" aria-hidden="true">+</span>
+        </button>
+        <div class="faq-a">{{ a }}</div>
+      </div>
+      {% endfor %}
+    </div>
+
+    <div class="panel" style="margin-top:28px; padding:22px">
+      <h2 style="margin:0 0 6px; font-size:1.05rem">Still need help?</h2>
+      <p class="muted" style="margin:0 0 14px">Open a support ticket or track an existing order — we're quick to respond.</p>
+      <div style="display:flex; gap:10px; flex-wrap:wrap">
+        <a class="btn btn-primary" href="{{ url_for('account.support') }}">Open a support ticket</a>
+        <a class="btn btn-ghost" href="{{ url_for('cart.track') }}">Track an order</a>
+      </div>
+    </div>
+  </div>
+</section>
+{% endblock %}

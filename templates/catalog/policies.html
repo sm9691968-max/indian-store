@@ -1,0 +1,106 @@
+{% extends "base.html" %}
+{% block title %}Store policies — Indian Store{% endblock %}
+{% block meta %}
+  <meta name="description" content="Shipping, returns, warranty, payment, privacy and terms for shopping at Indian Store.">
+  <meta name="robots" content="index, follow">
+  <link rel="canonical" href="{{ url_for('catalog.policies', _external=True) }}">
+{% endblock %}
+
+{% block content %}
+<section class="page-head">
+  <div class="wrap">
+    <nav class="crumbs"><a href="{{ url_for('catalog.index') }}">Home</a> / Policies</nav>
+    <div class="feature-hero">
+      <h1>Store policies</h1>
+      <p>The plain-English rules behind every order — shipping, returns, warranty, payments and your privacy.</p>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap">
+    <div class="policy-layout">
+      <nav class="policy-nav" aria-label="Policy sections">
+        <a href="#about">About Indian Store</a>
+        <a href="#shipping">Shipping &amp; delivery</a>
+        <a href="#returns">Returns &amp; refunds</a>
+        <a href="#warranty">Warranty</a>
+        <a href="#payments">Payments &amp; EMI</a>
+        <a href="#privacy">Privacy policy</a>
+        <a href="#terms">Terms of sale</a>
+        <a href="#contact">Contact us</a>
+      </nav>
+
+      <div class="policy-prose">
+        <h2 id="about">About Indian Store</h2>
+        <p>Indian Store is a curated marketplace for premium keyboards, audio, displays and desk gear. Every listing is sourced through authorised distributors and checked for authenticity before it ships.</p>
+        <p class="policy-meta">Indian Store Retail Pvt. Ltd. &middot; 4th Floor, Prestige Tech Park, Bengaluru 560103 &middot; GSTIN <span class="mono">29ABCDE1234F1Z5</span></p>
+
+        <h2 id="shipping">Shipping &amp; delivery</h2>
+        <p>Orders are dispatched from our Bengaluru and Mumbai fulfilment centres within one working day. Metro pincodes are typically delivered the next day; most other addresses arrive within two to five working days.</p>
+        <ul>
+          <li>Delivery is free on orders over {{ free_delivery_label }}.</li>
+          <li>Below that, a flat delivery fee of {{ shipping_flat|money }} is added at checkout and shown before you pay.</li>
+          <li>Cash on delivery is available on orders up to {{ (2000)|money }} in most serviceable pincodes.</li>
+          <li>Large items such as displays are delivered by a two-person team with a doorstep inspection.</li>
+        </ul>
+
+        <h2 id="returns">Returns &amp; refunds</h2>
+        <p>You have seven days from delivery to request a return on an unused item in its original packaging. Start the return from the order page and we will arrange a pickup where serviceable.</p>
+        <ul>
+          <li>Refunds are issued to the original payment method within three to five working days of our receiving the item.</li>
+          <li>Gift-card balances used on the order are restored immediately.</li>
+          <li>Items damaged in transit are replaced at no cost — share photos when you raise the request.</li>
+        </ul>
+
+        <h2 id="warranty">Warranty</h2>
+        <p>Every product carries the manufacturer's warranty listed on its product page under the specification sheet. Your GST invoice is your proof of purchase, so keep it safe.</p>
+        <ul>
+          <li>Warranty service is handled through authorised brand service centres across India.</li>
+          <li>Extended protection plans, where offered, are shown at checkout on eligible products.</li>
+        </ul>
+
+        <h2 id="payments">Payments &amp; EMI</h2>
+        <p>We accept UPI, Visa, Mastercard, RuPay, net banking and cash on delivery. Card details never touch our servers — every transaction is processed over a PCI-DSS compliant gateway with 256-bit encryption.</p>
+        <ul>
+          <li>No-cost EMI is available on eligible cards and shown on the product page for orders above the EMI threshold.</li>
+          <li>Prices include GST; a GST invoice is generated automatically for every order.</li>
+        </ul>
+
+        <h2 id="privacy">Privacy policy</h2>
+        <p>We collect only what is needed to fulfil your order — your name, contact details, delivery address and order history. We never sell your personal data.</p>
+        <ul>
+          <li>Payment details are handled by our payment partners and are never stored on our servers.</li>
+          <li>Analytics cookies stay off until you accept them from the cookie notice.</li>
+          <li>You can request a copy or the deletion of your account data at any time by opening a support ticket.</li>
+        </ul>
+
+        <h2 id="terms">Terms of sale</h2>
+        <p>By placing an order you confirm that the details you provide are accurate and that you are authorised to use the selected payment method.</p>
+        <ul>
+          <li>Prices and availability are subject to change until your order is confirmed.</li>
+          <li>Orders may be cancelled until they are marked Shipped; after that, please start a return.</li>
+          <li>These terms are governed by the laws of India, with jurisdiction in the courts of Bengaluru, Karnataka.</li>
+        </ul>
+
+        <h2 id="contact">Contact us</h2>
+        <p>Our support team replies within one working day.</p>
+        <ul>
+          <li>Email: <a href="mailto:support@indianstore.id">support@indianstore.id</a></li>
+          <li>Phone: +91 80 4567 1200 (Mon–Sat, 9am–7pm IST)</li>
+          <li>Or open a support ticket from your account for the fastest response.</li>
+        </ul>
+
+        <div class="panel" style="margin-top:30px; padding:22px">
+          <h2 style="margin:0 0 6px; font-size:1.05rem">Need something specific?</h2>
+          <p class="muted" style="margin:0 0 14px">Browse common questions or track an order in a click.</p>
+          <div style="display:flex; gap:10px; flex-wrap:wrap">
+            <a class="btn btn-primary" href="{{ url_for('catalog.faq') }}">Help &amp; FAQ</a>
+            <a class="btn btn-ghost" href="{{ url_for('cart.track') }}">Track an order</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+{% endblock %}

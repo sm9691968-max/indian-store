@@ -3,14 +3,34 @@
 {% block title %}Indian Store — Next-Gen Marketplace{% endblock %}
 
 {% block content %}
-<section class="hero fade-up">
+<section class="hero hero--bh fade-up" data-blackhole-hero
+         data-scrim="left" data-scrim-strength="0.82"
+         data-focus="0.74 0.44" data-steps="320" data-resolution="0.7">
+  <canvas class="bh-hero__canvas" aria-hidden="true"></canvas>
   <h1>Hardware for people who<br><em>build the future</em>.</h1>
-  <p>Indian Store is a curated marketplace for high-performance components, dev rigs and peripherals — vetted by engineers, shipped overnight.</p>
+  <p data-reveal-text>Indian Store is a curated marketplace for high-performance components, dev rigs and peripherals — vetted by engineers, shipped overnight.</p>
   <div class="hero-stats">
     <div class="hero-stat"><div class="v" data-count="12480" data-suffix="+">12,480+</div><div class="k">Orders shipped</div></div>
-    <div class="hero-stat"><div class="v" data-count="4.8" data-decimals="1" data-suffix="/5">4.8/5</div><div class="k">Buyer rating</div></div>
+    <div class="hero-stat"><div class="v" data-count="4.8" data-decimals="1" data-suffix="/5">4.8/5</div><div class="k">Verified rating</div></div>
     <div class="hero-stat"><div class="v" data-count="24" data-suffix="h">24h</div><div class="k">Dispatch window</div></div>
     <div class="hero-stat"><div class="v" data-count="30" data-suffix="d">30d</div><div class="k">Free returns</div></div>
+  </div>
+</section>
+
+<section class="marquee" aria-label="Why shoppers choose Indian Store">
+  <div class="marquee-track">
+    <div class="marquee-group">
+      <span class="marquee-item"><svg viewBox="0 0 24 24"><rect x="1" y="3" width="15" height="13"></rect><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"></polygon><circle cx="5.5" cy="18.5" r="2.5"></circle><circle cx="18.5" cy="18.5" r="2.5"></circle></svg> Free delivery over {{ free_delivery_label }}</span>
+      <span class="marquee-sep" aria-hidden="true"></span>
+      <span class="marquee-item"><svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path><polyline points="9 12 11 14 15 10"></polyline></svg> 2-year warranty, handled in-house</span>
+      <span class="marquee-sep" aria-hidden="true"></span>
+      <span class="marquee-item"><svg viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg> 30-day free returns</span>
+      <span class="marquee-sep" aria-hidden="true"></span>
+      <span class="marquee-item"><svg viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg> 4.8/5 from verified buyers</span>
+      <span class="marquee-sep" aria-hidden="true"></span>
+      <span class="marquee-item"><svg viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg> Secure checkout · UPI, cards &amp; no-cost EMI</span>
+      <span class="marquee-sep" aria-hidden="true"></span>
+    </div>
   </div>
 </section>
 
@@ -150,7 +170,7 @@
 
   {# ---------------- Results ---------------- #}
   <div>
-    <div class="toolbar">
+    <div class="toolbar" data-reveal>
       <div>
         <h2 class="section-title">
           {% if filters.q %}Results for &ldquo;{{ filters.q }}&rdquo;{% elif filters.category %}{{ filters.category|title }}{% else %}Featured gear{% endif %}
@@ -182,7 +202,7 @@
     </div>
 
     {% if pages > 1 %}
-    <nav class="pagination" aria-label="Pagination">
+    <nav class="pagination" aria-label="Pagination" data-reveal>
       {% if page > 1 %}
       <a href="{{ url_for('catalog.index', page=page-1, **filters) }}">&larr; Prev</a>
       {% else %}

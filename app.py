@@ -1,37 +1,48 @@
-from flask import Flask, render_template, request, session, redirect, url_for
+import secrets
+from datetime import datetime, timezone
+
+from flask import Flask, g, jsonify, redirect, render_template, request, session, url_for
 from flask_wtf.csrf import CSRFProtect
 
-from config import Config, _DEV_SECRET
-from extensions import db
+from config import _DEV_SECRET, Config
+from extensions import db, migrate
 from helpers import (
     CURRENCIES,
-    current_user,
+    SHIPPING_FLAT_RATE,
     currency_code,
     currency_symbol,
+    current_user,
     free_delivery_label,
     live_activity_events,
     money_str,
     pending_alerts,
     safe_next,
+    sold_last_24h,
+    trending_searches,
     visitor_id,
+    wants_json,
     wishlist_ids,
 )
+from logging_setup import configure_logging
 
 
 def create_app(config_class=Config):
     app = Flask(__name__, instance_relative_config=False)
     app.config.from_object(config_class)
 
+    configure_logging(app)
     db.init_app(app)
+    migrate.init_app(app, db)
     csrf = CSRFProtect(app)
 
-    from blueprints.auth import auth_bp
-    from blueprints.catalog import catalog_bp
-    from blueprints.cart import cart_bp
     from blueprints.account import account_bp
     from blueprints.admin import admin_bp
-    from blueprints.seo import seo_bp
     from blueprints.assistant import assistant_bp
+    from blueprints.auth import auth_bp
+    from blueprints.cart import cart_bp
+    from blueprints.catalog import catalog_bp
+    from blueprints.health import health_bp
+    from blueprints.seo import seo_bp
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(catalog_bp)
@@ -40,14 +51,18 @@ def create_app(config_class=Config):
     app.register_blueprint(admin_bp)
     app.register_blueprint(seo_bp)
     app.register_blueprint(assistant_bp)
+    app.register_blueprint(health_bp)
 
     # The assistant chat endpoint is a read-only JSON "ask a question" call, so
     # it is CSRF-exempt like a public API and rate-limited server-side instead.
     csrf.exempt(assistant_bp)
 
     @app.before_request
-    def ensure_visitor_id():
-        """Every guest gets a stable id for recently-viewed and live search."""
+    def assign_request_id():
+        """Tag each request and give guests a stable id for live search."""
+        g.request_id = secrets.token_hex(8)
+        if request.path.startswith(("/healthz", "/readyz", "/static/")):
+            return None
         visitor_id()
         return None
 
@@ -57,20 +72,31 @@ def create_app(config_class=Config):
         response.headers.setdefault("X-Content-Type-Options", "nosniff")
         response.headers.setdefault("X-Frame-Options", "DENY")
         response.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
-        response.headers.setdefault(
-            "Content-Security-Policy",
+        csp = (
             "default-src 'self'; "
             "img-src 'self' https: data:; "
             "style-src 'self' 'unsafe-inline'; "
             "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
+        )
+        csp += (
             "form-action 'self'; "
             "frame-ancestors 'none'; "
             "base-uri 'self'; "
-            "object-src 'none'",
+            "object-src 'none'"
         )
+        response.headers.setdefault("Content-Security-Policy", csp)
         if request.is_secure:
             response.headers.setdefault(
                 "Strict-Transport-Security", "max-age=31536000; includeSubDomains"
+            )
+        response.headers.setdefault("X-Request-ID", getattr(g, "request_id", ""))
+        if not request.path.startswith("/static/"):
+            app.logger.info(
+                "%s %s -> %s [%s]",
+                request.method,
+                request.full_path.rstrip("?"),
+                response.status_code,
+                getattr(g, "request_id", "-"),
             )
         return response
 
@@ -85,12 +111,14 @@ def create_app(config_class=Config):
             "wish_count": len(wishlist_ids(user)),
             "alert_count": pending_alerts(user),
             "compare_count": len(session.get("compare", [])),
-            "now_year": 2026,
+            "now_year": datetime.now(timezone.utc).year,
             "currencies": CURRENCIES,
             "currency": code,
             "currency_sym": currency_symbol(code),
             "free_delivery_label": free_delivery_label(),
+            "shipping_flat": SHIPPING_FLAT_RATE,
             "live_events": live_activity_events(),
+            "trending_searches": trending_searches(),
             "site_domain": request.host,
         }
 
@@ -150,8 +178,6 @@ def create_app(config_class=Config):
     @app.template_filter("ts")
     def ts(value):
         """Relative time: 3h ago, 2d ago."""
-        from datetime import datetime, timezone
-
         if not value:
             return ""
         if isinstance(value, (int, float)):
@@ -168,22 +194,41 @@ def create_app(config_class=Config):
             return f"{seconds // 86400}d ago"
         return value.strftime("%d %b %Y")
 
+    # Exposed to templates so product cards can show real 24h demand without
+    # each view having to pre-compute a mapping.
+    app.jinja_env.globals["sold_last_24h"] = sold_last_24h
+
+    def _wants_json_error() -> bool:
+        return wants_json() or request.path.startswith(("/assistant", "/api"))
+
     @app.errorhandler(403)
     def forbidden(_):
+        if _wants_json_error():
+            return jsonify({"error": "forbidden"}), 403
         return render_template("errors/403.html"), 403
 
     @app.errorhandler(404)
     def not_found(_):
+        if _wants_json_error():
+            return jsonify({"error": "not_found"}), 404
         return render_template("errors/404.html"), 404
 
     @app.errorhandler(500)
     def server_error(_):
+        if _wants_json_error():
+            return jsonify({"error": "internal_server_error"}), 500
         return render_template("errors/500.html"), 500
 
-    with app.app_context():
-        db.create_all()
+    if app.config.get("ENV") != "production":
+        with app.app_context():
+            db.create_all()
 
-    if not app.debug and app.config["SECRET_KEY"] == _DEV_SECRET:
+    secret = app.config.get("SECRET_KEY")
+    if app.config.get("ENV") == "production" and (not secret or secret == _DEV_SECRET):
+        raise RuntimeError(
+            "SECRET_KEY must be set to a strong value when APP_ENV=production."
+        )
+    if secret == _DEV_SECRET:
         app.logger.warning(
             "SECRET_KEY is still the development default. Set the SECRET_KEY "
             "environment variable before serving this anywhere public."

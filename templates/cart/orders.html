@@ -88,6 +88,10 @@
     </span>
     <span style="display:flex; align-items:center; gap:16px">
       {{ order.item_count }} item{{ '' if order.item_count == 1 else 's' }} &middot; <b>{{ order.total|money }}</b>
+      <form method="post" action="{{ url_for('cart.reorder', reference=order.reference) }}">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button class="mini-btn" type="submit" title="Add these items to your cart again">Buy again</button>
+      </form>
       <a class="mini-btn go" href="{{ url_for('cart.order_detail', reference=order.reference) }}">Track</a>
     </span>
   </div>

@@ -9,9 +9,9 @@ invoices, multi-currency, audit logging, analytics and SEO.
 
 import sys
 
+import totp
 from app import create_app
 from extensions import db
-import totp
 
 PASSED = []
 
@@ -276,7 +276,7 @@ def main():
     with app.app_context():
         check("toggle works both ways", db.session.get(CartItem, saved_id).is_saved is True)
 
-    r = client.post(f"/cart/save/999999", follow_redirects=False)
+    r = client.post("/cart/save/999999", follow_redirects=False)
     check("unknown cart line 404s", r.status_code == 404, str(r.status_code))
 
     # ------------------------------------------------------------- shared wishlist

@@ -1,4 +1,9 @@
 * text=auto eol=lf
+
+# Windows batch launchers must keep CRLF or cmd.exe mis-reads goto labels.
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
 *.png binary
 *.jpg binary
 *.jpeg binary

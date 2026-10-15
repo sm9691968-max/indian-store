@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block title %}Offers & coupons — Indian Store{% endblock %}
+{% block meta %}
+  <meta name="description" content="Live coupon codes and offers at Indian Store — apply them at checkout for instant savings.">
+  <meta name="robots" content="index, follow">
+  <link rel="canonical" href="{{ url_for('catalog.offers', _external=True) }}">
+{% endblock %}
+
+{% block content %}
+<section class="page-head">
+  <div class="wrap">
+    <nav class="crumbs"><a href="{{ url_for('catalog.index') }}">Home</a> / Offers</nav>
+    <div class="feature-hero">
+      <h1>Offers &amp; coupon codes</h1>
+      <p>Copy a code and paste it in the cart or checkout. Offers apply to eligible carts automatically.</p>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap">
+    {% if coupons %}
+    <div class="card-grid">
+      {% for c in coupons %}
+      <article class="offer-card fade-up">
+        <div class="oc-code">{{ c.code }}</div>
+        <div class="oc-title">{{ c.label }}</div>
+        {% if c.description %}<p class="muted sm" style="margin:0 0 6px">{{ c.description }}</p>{% endif %}
+        <div class="oc-meta">
+          {% if c.min_subtotal and c.min_subtotal > 0 %}Min. spend {{ c.min_subtotal|money }}{% else %}No minimum spend{% endif %}
+          &middot; {% if c.expires_at %}Expires {{ c.expires_at.strftime('%d %b %Y') }}{% else %}No expiry{% endif %}
+        </div>
+        <div class="oc-actions">
+          <button class="btn btn-primary btn-sm" type="button" data-copy="{{ c.code }}">Copy code</button>
+          <a class="btn btn-ghost btn-sm" href="{{ url_for('catalog.index') }}">Shop now</a>
+        </div>
+      </article>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="offers-empty">
+      <h2>No live offers right now</h2>
+      <p>Check back soon — new codes drop most weeks. Meanwhile, members earn points on every order.</p>
+      <a class="btn btn-primary" href="{{ url_for('catalog.index') }}">Browse the catalog</a>
+    </div>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}

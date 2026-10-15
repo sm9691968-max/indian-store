@@ -14,16 +14,20 @@
 
 {% macro product_card(p) %}
 <article class="product-card fade-up">
-  <a class="product-thumb" href="{{ url_for('catalog.product_detail', slug=p.slug) }}">
-    {% if p.badge %}<span class="product-badge">{{ p.badge }}</span>{% endif %}
-    {% if p.stock == 0 %}<span class="out-chip">Sold out</span>
-    {% elif p.is_low_stock %}<span class="out-chip" style="background:rgba(224, 155, 47,0.92)">Only {{ p.stock }}</span>{% endif %}
-    {% if p.image_url %}
-      <img src="{{ p.image_url }}" alt="{{ p.name }}" loading="lazy">
-    {% else %}
-      <span class="thumb-glyph">{{ p.category.name[:1] if p.category else 'N' }}</span>
-    {% endif %}
-  </a>
+  <div class="product-media">
+    <a class="product-thumb" href="{{ url_for('catalog.product_detail', slug=p.slug) }}">
+      {% if p.badge %}<span class="product-badge">{{ p.badge }}</span>{% endif %}
+      {% if p.stock == 0 %}<span class="out-chip">Sold out</span>
+      {% elif p.is_low_stock %}<span class="out-chip" style="background:rgba(224, 155, 47,0.92)">Only {{ p.stock }}</span>{% endif %}
+      {% if p.image_url %}
+        <img src="{{ p.image_url }}" alt="{{ p.name }}" loading="lazy">
+      {% else %}
+        <span class="thumb-glyph">{{ p.category.name[:1] if p.category else 'N' }}</span>
+      {% endif %}
+    </a>
+    <button type="button" class="qv-btn" data-qv="{{ url_for('catalog.quick_view', slug=p.slug) }}"
+            aria-label="Quick view {{ p.name }}">Quick view</button>
+  </div>
 
   {% if current_user %}
   <form action="{{ url_for('catalog.toggle_wishlist', product_id=p.id) }}" method="post" data-wishlist>
@@ -45,6 +49,10 @@
       {% if p.sold_count %}<span class="rc">&middot; {{ p.sold_count }} sold</span>{% endif %}
       {% if p.free_shipping %}<span class="ship-tag" title="Ships free">Free shipping</span>{% endif %}
     </div>
+    {% if p.is_low_stock and p.stock > 0 %}
+      {% set recent = sold_last_24h(p.id) %}
+      {% if recent %}<span class="urgency-badge" style="margin-top:6px"><span class="urgency-dot"></span>{{ recent }} sold in the last 24h</span>{% endif %}
+    {% endif %}
     <div class="product-foot">
       {{ price_block(p) }}
       {% if current_user %}

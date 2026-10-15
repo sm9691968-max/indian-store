@@ -37,7 +37,6 @@ from models import (
     WishlistItem,
     utcnow,
 )
-import totp
 
 DEMO_EMAIL = "demo@indianstore.id"
 DEMO_PASSWORD = "IndianStore2026"
@@ -232,8 +231,8 @@ CUSTOMERS = [
 ]
 
 ADDRESSES = [
-    ("Home", "14 Lantern Row", "Apt 6B", "Portland", "97209", "United States", True),
-    ("Studio", "2200 Foundry Street", "Suite 400", "Seattle", "98104", "United States", False),
+    ("Home", "402, Sunrise Residency", "12th Main, Indiranagar", "Bengaluru", "560038", "India", True),
+    ("Studio", "22 Linking Road", "Bandra West", "Mumbai", "400050", "India", False),
 ]
 
 COUPONS = [
@@ -301,7 +300,7 @@ REVIEW_POOL = [
 ]
 
 ORDER_PLAN = [
-    (0, ["Nebula 75 Mechanical Keyboard", "Gaia Mechanical Numpad"], "Delivered", "WELCOME10", 0),
+    (0, ["Nebula 75 Mechanical Keyboard", "Gaia Mechanical Numpad"], "Delivered", "INDIANSTORE20", 0),
     (0, ["Orbit 27 4K Monitor"], "Out for delivery", "LAUNCH50", 1),
     (1, ["Echo ANC Headphones"], "Shipped", "", 2),
     (2, ["Helix NVMe 2TB Gen4"], "Delivered", "", 3),
@@ -1270,7 +1269,6 @@ def build_alerts_and_views(db, products, customers, rng) -> None:
 
 def build_gift_cards_and_loyalty(db, products, customers, orders, admin) -> None:
     """Issued gift cards plus a loyalty history that matches the seeded orders."""
-    by_name = {p.name: p for p in products}
     for user_index, code, amount, balance, redeemed in GIFT_CARDS:
         db.session.add(
             GiftCard(
@@ -1279,7 +1277,7 @@ def build_gift_cards_and_loyalty(db, products, customers, orders, admin) -> None
                 initial_balance=Decimal(amount),
                 balance=Decimal(balance),
                 redeemed_count=redeemed,
-                currency="USD",
+                currency="INR",
                 is_active=True,
                 user_id=customers[user_index].id,
                 created_by_id=admin.id,
@@ -1398,9 +1396,9 @@ def build_audit_and_email(db, products, customers, coupons, admin, orders, rng) 
 
     demo = customers[0]
     emails = [
-        (demo, demo.email, "Welcome to Indian Store", "Hi Alex,\n\nYour Indian Store account is live. You start with 0 points and earn 1 per dollar spent.\n\n— The Indian Store team", "welcome", 95),
-        (demo, demo.email, "Your Indian Store order has shipped", "Hi Alex,\n\nOrder IS-1A2B3C4D left the Seattle fulfilment centre. Track it from your account.\n\n— The Indian Store team", "order", 40),
-        (demo, demo.email, f"Price alert armed for {products[4].name}", f"We will email you the moment {products[4].name} drops below $249.00.", "alert", 2),
+        (demo, demo.email, "Welcome to Indian Store", "Hi Alex,\n\nYour Indian Store account is live. You start with 0 points and earn 1 point for every 1 spent.\n\n— The Indian Store team", "welcome", 95),
+        (demo, demo.email, "Your Indian Store order has shipped", "Hi Alex,\n\nOrder IS-1A2B3C4D left the Mumbai fulfilment centre. Track it from your account.\n\n— The Indian Store team", "order", 40),
+        (demo, demo.email, f"Price alert armed for {products[4].name}", f"We will email you the moment {products[4].name} drops below \u20b920,716.80.", "alert", 2),
         (demo, demo.email, "Delivery update for your order", "Hi Alex,\n\nYour parcel is out for delivery today.\n\n— The Indian Store team", "order", 1),
     ]
     for user, to_addr, subject, body, kind, days_ago in emails:
@@ -1485,7 +1483,12 @@ def build_orders(db, products, customers, coupons, rng) -> list:
         subtotal = sum((Decimal(p.price) for p in lines), Decimal("0.00"))
         coupon = next((c for c in coupons if c.code == coupon_code), None)
         shipping = shipping_for(subtotal)
-        discount = coupon.discount_for(subtotal, shipping) if coupon else Decimal("0.00")
+        # Keep this in lockstep with helpers.quote_cart: a free-shipping coupon
+        # waives delivery only and never also discounts the merchandise.
+        if coupon is None or coupon.kind == "freeship":
+            discount = Decimal("0.00")
+        else:
+            discount = coupon.discount_for(subtotal, shipping)
         shipping_after = Decimal("0.00") if (coupon and coupon.kind == "freeship") else shipping
         taxable = max(subtotal - discount, Decimal("0.00"))
         tax = (taxable * TAX_RATE).quantize(Decimal("0.01"))

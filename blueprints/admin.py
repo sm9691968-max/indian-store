@@ -4,29 +4,36 @@ from decimal import Decimal
 
 from flask import (
     Blueprint,
+    Response,
+    abort,
+    flash,
+    redirect,
     render_template,
     request,
-    redirect,
     url_for,
-    flash,
-    abort,
-    Response,
-    stream_with_context,
 )
 from sqlalchemy import func, or_
-from sqlalchemy.exc import IntegrityError
 
 from extensions import db
+from helpers import (
+    admin_required,
+    audit,
+    current_user,
+    like_pattern,
+    log_email,
+    money_str,
+    safe_next,
+    slugify,
+)
 from models import (
+    CANCELLED,
+    ORDER_FLOW,
     AuditLog,
     CartItem,
     Category,
     Coupon,
-    EmailLog,
     GiftCard,
-    LoyaltyEvent,
     Order,
-    OrderEvent,
     OrderItem,
     Product,
     ProductImage,
@@ -37,11 +44,9 @@ from models import (
     TicketMessage,
     User,
     ViewEvent,
-    ORDER_FLOW,
-    CANCELLED,
+    WishlistItem,
     utcnow,
 )
-from helpers import current_user, admin_required, audit, log_email, safe_next, slugify
 
 admin_bp = Blueprint("admin", __name__, url_prefix="/admin")
 
@@ -164,8 +169,8 @@ def products():
     search = (request.args.get("q") or "").strip()
     stmt = db.select(Product)
     if search:
-        like = f"%{search}%"
-        stmt = stmt.where(or_(Product.name.ilike(like), Product.sku.ilike(like)))
+        like = like_pattern(search)
+        stmt = stmt.where(or_(Product.name.ilike(like, escape="\\"), Product.sku.ilike(like, escape="\\")))
     rows = db.session.scalars(stmt.order_by(Product.created_at.desc())).all()
     categories = db.session.scalars(db.select(Category).order_by(Category.name)).all()
     return render_template(
@@ -244,15 +249,34 @@ def delete_product(product_id):
     if product is None:
         abort(404)
 
-    in_orders = db.session.scalar(
-        db.select(func.count()).select_from(OrderItem).where(OrderItem.product_id == product_id)
+    def _refs(model, column):
+        return db.session.scalar(
+            db.select(func.count()).select_from(model).where(column == product_id)
+        )
+
+    # Any live reference means a hard delete would orphan rows and 500 whoever
+    # is looking at them (cart, wishlist, stock alerts, past orders). Archive instead.
+    referenced = (
+        db.session.scalar(
+            db.select(func.count()).select_from(OrderItem).where(OrderItem.product_id == product_id)
+        )
+        or db.session.scalar(
+            db.select(func.count()).select_from(CartItem).where(CartItem.product_id == product_id)
+        )
+        or db.session.scalar(
+            db.select(func.count()).select_from(WishlistItem).where(WishlistItem.product_id == product_id)
+        )
+        or db.session.scalar(
+            db.select(func.count()).select_from(StockAlert).where(StockAlert.product_id == product_id)
+        )
     )
-    if in_orders:
-        # Preserve order history — archive instead of hard-deleting.
+    if referenced:
+        # Preserve references — archive instead of hard-deleting.
         product.is_active = False
         db.session.commit()
         flash(
-            "That product is referenced by past orders, so it was archived (hidden) instead of deleted.",
+            "That product is still referenced (order history, a cart, wishlist or stock alert), "
+            "so it was archived (hidden) instead of deleted.",
             "info",
         )
         return redirect(url_for("admin.products"))
@@ -277,12 +301,12 @@ def orders():
     if status_filter in ORDER_FLOW + [CANCELLED]:
         stmt = stmt.where(Order.status == status_filter)
     if search:
-        like = f"%{search}%"
+        like = like_pattern(search)
         stmt = stmt.outerjoin(User, User.id == Order.user_id).where(
             or_(
-                Order.reference.ilike(like),
-                Order.shipping_name.ilike(like),
-                User.email.ilike(like),
+                Order.reference.ilike(like, escape="\\"),
+                Order.shipping_name.ilike(like, escape="\\"),
+                User.email.ilike(like, escape="\\"),
             )
         )
 
@@ -371,7 +395,8 @@ def coupons():
                 value=Decimal(str(value)),
                 min_subtotal=Decimal(str(request.form.get("min_subtotal", type=float) or 0)),
                 max_uses=request.form.get("max_uses", type=int) or 0,
-                is_active=bool(request.form.get("is_active", "on")),
+                # Absent checkbox means unchecked, i.e. False — not the default "on".
+                is_active=bool(request.form.get("is_active")),
             )
         )
         audit(current_user(), "coupon_create", "Coupon", code, f"{kind} {value}")
@@ -417,9 +442,9 @@ def users():
     search = (request.args.get("q") or "").strip()
     stmt = db.select(User)
     if search:
-        like = f"%{search}%"
+        like = like_pattern(search)
         stmt = stmt.where(
-            or_(User.full_name.ilike(like), User.email.ilike(like))
+            or_(User.full_name.ilike(like, escape="\\"), User.email.ilike(like, escape="\\"))
         )
     rows = db.session.scalars(stmt.order_by(User.created_at.desc())).all()
     return render_template("admin/users.html", users=rows, search=search)
@@ -502,9 +527,9 @@ def audit_log():
     if action:
         stmt = stmt.where(AuditLog.action == action)
     if search:
-        like = f"%{search}%"
+        like = like_pattern(search)
         stmt = stmt.where(
-            or_(AuditLog.detail.ilike(like), User.email.ilike(like), AuditLog.entity.ilike(like))
+            or_(AuditLog.detail.ilike(like, escape="\\"), User.email.ilike(like, escape="\\"), AuditLog.entity.ilike(like, escape="\\"))
         )
 
     rows = db.session.scalars(stmt.order_by(AuditLog.created_at.desc()).limit(300)).all()
@@ -847,11 +872,11 @@ def gift_cards():
                 amount=value,
                 initial_balance=value,
                 balance=value,
-                currency="USD",
+                currency="INR",
                 created_by_id=current_user().id,
             )
         )
-        audit(current_user(), "gift_card_issue", "GiftCard", code, f"${amount:.2f} to {user.email}")
+        audit(current_user(), "gift_card_issue", "GiftCard", code, f"{money_str(value)} to {user.email}")
         log_email(
             user,
             user.email,
@@ -947,7 +972,10 @@ def add_image(product_id):
         for other in product.images:
             other.is_primary = False
     is_primary = wants_primary or not had_images
-    db.session.add(ProductImage(product_id=product.id, url=url, is_primary=is_primary))
+    caption = (request.form.get("caption") or "").strip()[:120]
+    db.session.add(
+        ProductImage(product_id=product.id, url=url, caption=caption, is_primary=is_primary)
+    )
     audit(current_user(), "product_update", "Product", product.id, f"image added: {url[:60]}")
     db.session.commit()
     flash("Image added to the gallery.", "success")

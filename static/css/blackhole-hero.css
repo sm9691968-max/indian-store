@@ -1,0 +1,78 @@
+/*
+ * blackhole-hero.css — dark WebGL "stage" for the storefront hero.
+ * Pairs with static/js/blackhole-hero.js. Everything is scoped to
+ * .hero--bh so the plain .hero (and every other page) is untouched.
+ */
+
+.hero--bh {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-height: 600px;
+  padding: clamp(44px, 6vw, 88px) clamp(24px, 5vw, 68px);
+  border-radius: 24px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background:
+    radial-gradient(130% 150% at 78% 44%, #1a1420 0%, #0b0b0e 56%, #050509 100%);
+  color: #f4f4f5;
+  box-shadow: 0 30px 80px -40px rgba(0, 0, 0, 0.9);
+  margin-bottom: 30px;
+}
+
+/* the light hero's corner glow would fight the space scene */
+.hero--bh::after { content: none; }
+
+.bh-hero__canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  z-index: 0;
+  animation: none !important;
+}
+
+/* keep copy, stats and any CTA above the canvas */
+.hero--bh > *:not(.bh-hero__canvas) {
+  position: relative;
+  z-index: 1;
+}
+
+.hero--bh h1 {
+  color: #fafafa;
+  text-shadow: 0 2px 30px rgba(0, 0, 0, 0.55);
+}
+.hero--bh h1 em {
+  background: linear-gradient(92deg, #ffd27a 0%, #f2a13c 42%, #ff7a4d 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+.hero--bh p {
+  color: rgba(244, 244, 245, 0.74);
+  text-shadow: 0 1px 18px rgba(0, 0, 0, 0.5);
+}
+.hero--bh .hero-stat .v { color: #ffd27a; }
+.hero--bh .hero-stat .k { color: rgba(244, 244, 245, 0.56); }
+
+/* if WebGL is unavailable the JS hides the canvas; keep the panel presentable */
+.hero--bh[data-webgl="unsupported"],
+.hero--bh[data-webgl="build-failed"] {
+  background:
+    radial-gradient(120% 140% at 78% 44%, #241a12 0%, #0b0b0e 58%, #050509 100%);
+}
+
+@media (max-width: 767px) {
+  .hero--bh {
+    min-height: 560px;
+    justify-content: flex-start;
+    padding: 40px 22px 64px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero--bh { min-height: 520px; }
+}

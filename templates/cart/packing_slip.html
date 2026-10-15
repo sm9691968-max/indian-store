@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Packing slip {{ order.reference }} — Indian Store</title>
+  <style>
+    :root { --ink:#141418; --muted:#6b6b76; --line:#e3e3e9; --accent:#e5a83b; }
+    * { box-sizing: border-box; }
+    body { margin: 0; padding: 28px; background: #f6f6f8; color: var(--ink);
+      font: 14px/1.55 -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+    .sheet { max-width: 720px; margin: 0 auto; background: #fff; border: 1px solid var(--line);
+      border-radius: 12px; padding: 34px; }
+    header { display: flex; justify-content: space-between; align-items: flex-start; gap: 20px;
+      border-bottom: 2px solid var(--ink); padding-bottom: 16px; }
+    .logo { font-size: 20px; font-weight: 800; letter-spacing: -0.01em; }
+    .logo span { color: var(--accent); }
+    h1 { margin: 0; font-size: 15px; letter-spacing: 0.08em; text-transform: uppercase; }
+    .doc-no { font-family: ui-monospace, "Cascadia Code", monospace; font-size: 12px; color: var(--muted); }
+    .parties { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; margin: 24px 0; }
+    h2 { font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted);
+      margin: 0 0 6px; font-weight: 700; }
+    address { font-style: normal; }
+    table { width: 100%; border-collapse: collapse; margin-top: 8px; }
+    th, td { text-align: left; padding: 10px; border-bottom: 1px solid var(--line); font-size: 13px; }
+    th { font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
+    .num { text-align: right; }
+    .tick { display: inline-block; width: 15px; height: 15px; border: 1.5px solid var(--muted);
+      border-radius: 4px; vertical-align: middle; }
+    .pk-sign { margin-top: 40px; border-top: 1px dashed var(--muted); width: 220px; padding-top: 6px;
+      font-size: 12px; color: var(--muted); }
+    footer { margin-top: 32px; font-size: 11px; color: var(--muted); text-align: center; }
+    .no-print { max-width: 720px; margin: 0 auto 16px; display: flex; gap: 10px; }
+    .no-print a, .no-print button { font: inherit; padding: 8px 15px; border-radius: 8px;
+      border: 1px solid var(--line); background: #fff; color: var(--ink); cursor: pointer;
+      text-decoration: none; }
+    .no-print button { background: var(--ink); color: #fff; border-color: var(--ink); }
+    @media print {
+      body { background: #fff; padding: 0; }
+      .sheet { border: 0; border-radius: 0; padding: 0; max-width: none; }
+      .no-print { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <div class="no-print">
+    <button type="button" onclick="window.print()">Print / Save as PDF</button>
+    <a href="{{ url_for('cart.order_detail', reference=order.reference) }}">Back to order</a>
+  </div>
+
+  <div class="sheet">
+    <header>
+      <div>
+        <div class="logo">Indian<span>Store</span></div>
+        <div class="doc-no" style="margin-top:4px">Curated marketplace</div>
+      </div>
+      <div style="text-align:right">
+        <h1>Packing slip</h1>
+        <div class="doc-no">{{ order.reference }}</div>
+        <div class="doc-no">{{ order.created_at.strftime('%d %b %Y') }}</div>
+      </div>
+    </header>
+
+    <div class="parties">
+      <div>
+        <h2>Ship to</h2>
+        <address>
+          <strong>{{ order.shipping_name }}</strong><br>
+          {{ order.shipping_address }}<br>
+          {{ order.shipping_city }} {{ order.shipping_postal }}<br>
+          {% if order.shipping_phone %}{{ order.shipping_phone }}{% endif %}
+        </address>
+      </div>
+      <div>
+        <h2>Dispatch</h2>
+        <address>
+          <strong>Carrier</strong> {{ order.carrier }}<br>
+          {% if order.tracking_number %}<strong>Tracking</strong> <span class="doc-no">{{ order.tracking_number }}</span><br>{% endif %}
+          <strong>Items</strong> {{ order.items|length }} line{{ '' if order.items|length == 1 else 's' }}
+          ({{ order.items|sum(attribute='quantity') }} units)
+        </address>
+      </div>
+    </div>
+
+    <table>
+      <thead>
+        <tr>
+          <th style="width:34px"><span class="tick"></span></th>
+          <th>Item</th>
+          <th>SKU</th>
+          <th class="num">Qty</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for item in order.items %}
+        <tr>
+          <td><span class="tick"></span></td>
+          <td>
+            <strong>{{ item.product_name }}</strong>
+            {% if item.variant_name %}<div style="color:var(--muted); font-size:12px">{{ item.variant_name }}</div>{% endif %}
+          </td>
+          <td class="doc-no">{{ item.product.sku if item.product else '—' }}</td>
+          <td class="num">{{ item.quantity }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+    {% if order.note %}
+    <div class="pk-sign" style="border:0; width:auto; padding:0; margin-top:20px">
+      <h2 style="margin-bottom:4px">Note</h2>{{ order.note }}
+    </div>
+    {% endif %}
+
+    <div class="pk-sign">Packed by / date</div>
+
+    <footer>This packing slip is not a tax invoice. For the full invoice, download it from your order page.</footer>
+  </div>
+</body>
+</html>
